@@ -225,29 +225,53 @@ class ScheduleController extends Controller
                     $dayOfWeekIso = $currentDate->dayOfWeekIso;
 
                     if (in_array($dayOfWeekIso, $selectedDays)) {
-                        $shift = 'Sáng';
-                        if ($shiftMode === 'Chiều') {
-                            $shift = 'Chiều';
-                        } elseif ($shiftMode === 'Xen kẽ') {
-                            $shift = ($sessionNumber % 2 === 1) ? 'Sáng' : 'Chiều';
+                        $shiftCandidates = [];
+                        if ($shiftMode === 'Sáng') {
+                            $shiftCandidates = ['Sáng'];
+                        } elseif ($shiftMode === 'Chiều') {
+                            $shiftCandidates = ['Chiều'];
+                        } else {
+                            // Xen kẽ
+                            $preferred = ($sessionNumber % 2 === 1) ? 'Sáng' : 'Chiều';
+                            $other = ($preferred === 'Sáng') ? 'Chiều' : 'Sáng';
+                            $shiftCandidates = [$preferred, $other];
                         }
 
-                        Schedule::updateOrCreate(
-                            [
-                                'class_id' => $request->class_id,
-                                'subject_id' => $subject->id,
-                                'session_number' => $sessionNumber,
-                            ],
-                            [
-                                'user_id' => $currentTeacher->id,
-                                'teaching_date' => $currentDate->format('Y-m-d'),
-                                'session_shift' => $shift,
-                                'sync_status' => 'pending',
-                                'google_event_id' => null,
-                            ]
-                        );
+                        foreach ($shiftCandidates as $shift) {
+                            $dateStr = $currentDate->format('Y-m-d');
 
-                        $sessionNumber++;
+                            // Kiểm tra Giảng viên có bận ca này không
+                            $teacherBusy = Schedule::where('user_id', $currentTeacher->id)
+                                ->where('teaching_date', $dateStr)
+                                ->where('session_shift', $shift)
+                                ->exists();
+
+                            // Kiểm tra Lớp học có bận ca này không
+                            $classBusy = Schedule::where('class_id', $request->class_id)
+                                ->where('teaching_date', $dateStr)
+                                ->where('session_shift', $shift)
+                                ->exists();
+
+                            if (!$teacherBusy && !$classBusy) {
+                                Schedule::updateOrCreate(
+                                    [
+                                        'class_id' => $request->class_id,
+                                        'subject_id' => $subject->id,
+                                        'session_number' => $sessionNumber,
+                                    ],
+                                    [
+                                        'user_id' => $currentTeacher->id,
+                                        'teaching_date' => $dateStr,
+                                        'session_shift' => $shift,
+                                        'sync_status' => 'pending',
+                                        'google_event_id' => null,
+                                    ]
+                                );
+
+                                $sessionNumber++;
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -521,7 +545,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Cập nhật Inline qua AJAX cho teaching_date và session_shift
+     * Cập nhật Inline qua AJAX cho teaching_date và session_shift có kiểm tra xung đột lịch
      */
     public function updateInline(Request $request, $id): JsonResponse
     {
@@ -531,7 +555,7 @@ class ScheduleController extends Controller
         ]);
 
         try {
-            $schedule = Schedule::findOrFail($id);
+            $schedule = Schedule::with(['class', 'subject'])->findOrFail($id);
 
             $oldDate  = $schedule->teaching_date->format('Y-m-d');
             $oldShift = $schedule->session_shift;
@@ -539,6 +563,48 @@ class ScheduleController extends Controller
             $hasChanged = ($oldDate !== $request->teaching_date) || ($oldShift !== $request->session_shift);
 
             if ($hasChanged) {
+                $newDate = Carbon::parse($request->teaching_date);
+
+                // Luật 1: Không xếp vào Chủ Nhật
+                if ($newDate->isSunday()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Quy định: Không xếp lịch dạy vào ngày Chủ Nhật!',
+                    ], 422);
+                }
+
+                // Luật 2: 1 Giảng viên chỉ dạy 1 lớp trong 1 ca
+                if ($schedule->user_id) {
+                    $teacherConflict = Schedule::where('user_id', $schedule->user_id)
+                        ->where('teaching_date', $request->teaching_date)
+                        ->where('session_shift', $request->session_shift)
+                        ->where('id', '!=', $schedule->id)
+                        ->with(['class', 'subject'])
+                        ->first();
+
+                    if ($teacherConflict) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Trùng lịch Giảng viên! Thầy/Cô đã có lịch dạy lớp [{$teacherConflict->class?->name}] môn [{$teacherConflict->subject?->name}] vào ca {$request->session_shift} ngày {$request->teaching_date}.",
+                        ], 422);
+                    }
+                }
+
+                // Luật 3: 1 Lớp học chỉ học 1 môn trong 1 ca
+                $classConflict = Schedule::where('class_id', $schedule->class_id)
+                    ->where('teaching_date', $request->teaching_date)
+                    ->where('session_shift', $request->session_shift)
+                    ->where('id', '!=', $schedule->id)
+                    ->with(['subject'])
+                    ->first();
+
+                if ($classConflict) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Trùng lịch Lớp học! Lớp [{$schedule->class?->name}] đã có lịch học môn [{$classConflict->subject?->name}] vào ca {$request->session_shift} ngày {$request->teaching_date}.",
+                    ], 422);
+                }
+
                 $schedule->teaching_date = $request->teaching_date;
                 $schedule->session_shift = $request->session_shift;
                 

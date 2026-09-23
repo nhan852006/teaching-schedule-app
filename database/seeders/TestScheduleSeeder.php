@@ -65,7 +65,7 @@ class TestScheduleSeeder extends Seeder
             $classes[$name] = Classes::firstOrCreate(['name' => $name]);
         }
 
-        // 3. Khởi tạo 5 Môn học và gán Giảng viên phụ trách
+        // 3. Khởi tạo 5 Môn học (3 môn 45h - 9 buổi; 2 môn 75h - 15 buổi)
         $subjectsData = [
             // 3 Môn 45h (9 buổi, mỗi buổi 5 tiết)
             [
@@ -203,7 +203,7 @@ class TestScheduleSeeder extends Seeder
             }
         }
 
-        // 4. Phân công mỗi lớp học 3 môn
+        // 4. Phân công mỗi lớp học 3 môn (15 cặp Lớp - Môn)
         $classSubjectMapping = [
             'K20-CNTT1' => ['IT4501', 'IT4502', 'IT7501'], // 45h, 45h, 75h
             'K20-CNTT2' => ['IT4501', 'IT4503', 'IT7501'], // 45h, 45h, 75h
@@ -212,46 +212,130 @@ class TestScheduleSeeder extends Seeder
             'K20-HTTT1' => ['IT4501', 'IT4502', 'IT7502'], // 45h, 45h, 75h
         ];
 
-        // 5. Tạo Lịch giảng dạy (Schedules) gắn với từng Giảng viên
-        $startDate = Carbon::create(2026, 10, 5, 0, 0, 0, 'Asia/Ho_Chi_Minh');
-        $shifts = ['Sáng', 'Chiều'];
+        // 5. Xếp lịch giảng dạy KHÔNG TRÙNG LỊCH (Collision-free Timetable)
+        // Luật:
+        // - 1 ngày có 2 ca (Sáng: 07:30-11:30, Chiều: 13:00-17:00)
+        // - Thứ 2 đến Thứ 7 (nghỉ Chủ Nhật)
+        // - Trong 1 ca (Ngày X - Ca Y):
+        //   + 1 Giảng viên CHỈ dạy tối đa 1 Lớp và 1 Môn
+        //   + 1 Lớp học CHỈ học tối đa 1 Môn
+        //   + 1 Lớp và 1 Môn học tối đa 1 buổi trong 1 ngày
 
+        // Làm sạch bảng schedules cũ trước khi seed lại
+        Schedule::truncate();
+
+        $pairings = [];
         foreach ($classSubjectMapping as $className => $subjectCodes) {
             $classObj = $classes[$className];
-
-            foreach ($subjectCodes as $sIndex => $sCode) {
+            foreach ($subjectCodes as $sCode) {
                 $subjectObj = $subjects[$sCode];
-                $totalSessions = $subjectObj->total_sessions;
-                $teacherId = $subjectObj->user_id;
+                $pairings[] = [
+                    'class_id' => $classObj->id,
+                    'subject_id' => $subjectObj->id,
+                    'teacher_id' => $subjectObj->user_id,
+                    'total_sessions' => $subjectObj->total_sessions,
+                    'current_session' => 1,
+                    'last_date' => null,
+                    'weekly_count' => 0,
+                ];
+            }
+        }
 
-                $currentDate = $startDate->copy()->addDays($sIndex * 2);
+        // Bắt đầu từ Thứ 2 ngày 05/10/2026
+        $currentDate = Carbon::create(2026, 10, 5, 0, 0, 0, 'Asia/Ho_Chi_Minh');
+        $shifts = ['Sáng', 'Chiều'];
 
-                for ($sessNum = 1; $sessNum <= $totalSessions; $sessNum++) {
-                    // Nếu rơi vào Chủ Nhật, chuyển sang Thứ 2 tiếp theo
-                    if ($currentDate->isSunday()) {
-                        $currentDate->addDay();
-                    }
-
-                    $shift = $shifts[($sessNum + $sIndex) % 2];
-
-                    Schedule::updateOrCreate(
-                        [
-                            'class_id' => $classObj->id,
-                            'subject_id' => $subjectObj->id,
-                            'session_number' => $sessNum,
-                        ],
-                        [
-                            'user_id' => $teacherId,
-                            'teaching_date' => $currentDate->format('Y-m-d'),
-                            'session_shift' => $shift,
-                            'sync_status' => 'pending',
-                            'google_event_id' => null,
-                        ]
-                    );
-
-                    $currentDate->addDays(2);
+        // Kiểm tra xem tất cả pairings đã hoàn thành chưa
+        $hasPending = function () use (&$pairings) {
+            foreach ($pairings as $p) {
+                if ($p['current_session'] <= $p['total_sessions']) {
+                    return true;
                 }
             }
+            return false;
+        };
+
+        $safetyDays = 0;
+        $currentWeekNumber = $currentDate->weekOfYear;
+
+        while ($hasPending() && $safetyDays < 200) {
+            $safetyDays++;
+
+            // Nếu sang tuần mới, reset số buổi trong tuần của các môn
+            if ($currentDate->weekOfYear !== $currentWeekNumber) {
+                $currentWeekNumber = $currentDate->weekOfYear;
+                foreach ($pairings as &$p) {
+                    $p['weekly_count'] = 0;
+                }
+                unset($p);
+            }
+
+            // Bỏ qua Chủ Nhật
+            if ($currentDate->isSunday()) {
+                $currentDate->addDay();
+                continue;
+            }
+
+            $dateStr = $currentDate->format('Y-m-d');
+
+            // Xếp từng ca trong ngày: Sáng rồi đến Chiều
+            foreach ($shifts as $shift) {
+                $busyTeachersInSlot = [];
+                $busyClassesInSlot  = [];
+
+                // Lặp qua các cặp lớp - môn để tìm những cặp hợp lệ có thể học trong slot này
+                foreach ($pairings as &$p) {
+                    if ($p['current_session'] > $p['total_sessions']) {
+                        continue;
+                    }
+
+                    // Không dạy/học quá 2 buổi/tuần cho cùng 1 môn (để rải đều các tuần)
+                    if ($p['weekly_count'] >= 2) {
+                        continue;
+                    }
+
+                    // Cùng 1 lớp và môn không học 2 ca trong cùng 1 ngày
+                    if ($p['last_date'] === $dateStr) {
+                        continue;
+                    }
+
+                    $tId = $p['teacher_id'];
+                    $cId = $p['class_id'];
+
+                    // LUẬT: 1 Giảng viên chỉ dạy 1 lớp trong ca này
+                    if (isset($busyTeachersInSlot[$tId])) {
+                        continue;
+                    }
+
+                    // LUẬT: 1 Lớp chỉ học 1 môn trong ca này
+                    if (isset($busyClassesInSlot[$cId])) {
+                        continue;
+                    }
+
+                    // Thỏa mãn toàn bộ luật -> Xếp lịch!
+                    Schedule::create([
+                        'user_id' => $tId,
+                        'class_id' => $cId,
+                        'subject_id' => $p['subject_id'],
+                        'session_number' => $p['current_session'],
+                        'teaching_date' => $dateStr,
+                        'session_shift' => $shift,
+                        'sync_status' => 'pending',
+                        'google_event_id' => null,
+                    ]);
+
+                    // Đánh dấu bận trong ca này
+                    $busyTeachersInSlot[$tId] = true;
+                    $busyClassesInSlot[$cId]  = true;
+
+                    $p['current_session']++;
+                    $p['weekly_count']++;
+                    $p['last_date'] = $dateStr;
+                }
+                unset($p);
+            }
+
+            $currentDate->addDay();
         }
     }
 }
