@@ -98,13 +98,37 @@ class ScheduleController extends Controller
         $syncPending = $mySchedules->where('sync_status', 'pending')->count();
         $syncPercentage = $totalSessionsCount > 0 ? round(($syncSynced / $totalSessionsCount) * 100) : 0;
 
-        // 3. Lịch giảng sắp tới của Giảng viên (Top 8 buổi sắp tới)
-        $upcomingSchedules = Schedule::where('user_id', $currentTeacher->id)
-            ->with(['class', 'subject'])
-            ->orderBy('teaching_date', 'asc')
-            ->orderBy('session_number', 'asc')
-            ->take(8)
-            ->get();
+        // 3. Tối ưu truy vấn dữ liệu cho Interactive Calendar
+        $allContents = SubjectContent::all()->groupBy('subject_id');
+
+        $allSchedules = Schedule::with(['class', 'subject', 'teacher'])->get();
+
+        $allCalendarEvents = $allSchedules->map(function ($s) use ($allContents) {
+            $c = $allContents->get($s->subject_id)?->firstWhere('session_number', $s->session_number);
+            return [
+                'id' => $s->id,
+                'date' => $s->teaching_date ? $s->teaching_date->format('Y-m-d') : '',
+                'shift' => $s->session_shift,
+                'session' => $s->session_number,
+                'class_id' => $s->class_id,
+                'class_name' => $s->class?->name ?? '',
+                'subject_id' => $s->subject_id,
+                'subject_name' => $s->subject?->name ?? '',
+                'teacher_id' => $s->user_id,
+                'teacher_name' => $s->teacher?->name ?? '',
+                'content' => $c?->content ?? 'Chưa cập nhật nội dung',
+                'theory_time' => $c?->theory_time ?? 0,
+                'practice_time' => $c?->practice_time ?? 0,
+                'sync_status' => $s->sync_status,
+            ];
+        });
+
+        // Lọc sự kiện riêng của Giảng viên hiện tại
+        $calendarEvents = $allCalendarEvents->where('teacher_id', $currentTeacher->id)->values();
+
+        // Tháng hiển thị mặc định: Tháng có lịch dạy gần nhất của giảng viên (hoặc tháng hiện tại)
+        $firstScheduleDate = $mySchedules->min('teaching_date');
+        $defaultMonth = $firstScheduleDate ? Carbon::parse($firstScheduleDate)->format('Y-m') : Carbon::now()->format('Y-m');
 
         return view('schedules.index', compact(
             'currentTeacher',
@@ -120,7 +144,9 @@ class ScheduleController extends Controller
             'syncModified',
             'syncPending',
             'syncPercentage',
-            'upcomingSchedules'
+            'calendarEvents',
+            'allCalendarEvents',
+            'defaultMonth'
         ));
     }
 
