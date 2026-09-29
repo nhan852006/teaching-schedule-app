@@ -647,21 +647,49 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Chuẩn hóa định dạng ngày từ dd/mm/yyyy hoặc yyyy-mm-dd sang chuẩn yyyy-mm-dd
+     * Chuẩn hóa định dạng ngày từ d/m/yy, dd/mm/yyyy, dd-mm-yyyy hoặc yyyy-mm-dd sang chuẩn yyyy-mm-dd
+     * Ưu tiên tuyệt đối định dạng Ngày/Tháng/Năm (Việt Nam) tránh lỗi hiểu nhầm sang Tháng/Ngày/Năm (Mỹ)
      */
-    protected function parseFlexibleDate(string $dateStr): string
+    protected function parseFlexibleDate(string $dateStr): ?string
     {
         $dateStr = trim($dateStr);
-        if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $dateStr, $matches)) {
-            // dd/mm/yyyy -> yyyy-mm-dd
-            return sprintf('%04d-%02d-%02d', $matches[3], $matches[2], $matches[1]);
+        if ($dateStr === '') {
+            return null;
         }
+
+        // 1. Định dạng ISO: YYYY-MM-DD hoặc YYYY/MM/DD
         if (preg_match('/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $dateStr, $matches)) {
-            // yyyy-mm-dd
-            return sprintf('%04d-%02d-%02d', $matches[1], $matches[2], $matches[3]);
+            $year = (int)$matches[1];
+            $month = (int)$matches[2];
+            $day = (int)$matches[3];
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
         }
-        $ts = strtotime($dateStr);
-        return $ts ? date('Y-m-d', $ts) : date('Y-m-d');
+
+        // 2. Định dạng Việt Nam: Ngày/Tháng/Năm (d/m/yy, dd/mm/yy, d/m/yyyy, dd/mm/yyyy)
+        // Ví dụ: 18/8/26, 4/9/26, 04/09/2026, 2/10/26, 3/11/26
+        if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/', $dateStr, $matches)) {
+            $day = (int)$matches[1];
+            $month = (int)$matches[2];
+            $rawYear = (int)$matches[3];
+
+            // Xử lý năm 2 chữ số (ví dụ: 26 -> 2026)
+            $year = ($rawYear < 100) ? (2000 + $rawYear) : $rawYear;
+
+            if (checkdate($month, $day, $year)) {
+                return sprintf('%04d-%02d-%02d', $year, $month, $day);
+            }
+        }
+
+        // 3. Fallback an toàn: thay dấu / bằng - để buộc strtotime hiểu là dd-mm-yyyy (European) thay vì mm/dd/yyyy (US)
+        $hyphenated = str_replace('/', '-', $dateStr);
+        $ts = strtotime($hyphenated);
+        if ($ts !== false) {
+            return date('Y-m-d', $ts);
+        }
+
+        return null;
     }
 
     /**
