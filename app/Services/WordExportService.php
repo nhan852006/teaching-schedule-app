@@ -28,6 +28,15 @@ class WordExportService
      */
     public function exportMau08(Classes $class, Subject $subject, Collection $schedules, array $options = []): string
     {
+        // 0. Cấu hình thư mục tạm riêng cho PhpWord để tránh lỗi tempnam() khi chạy dưới Apache/XAMPP
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+        }
+        @chmod($tempDir, 0777);
+
+        \PhpOffice\PhpWord\Settings::setTempDir($tempDir);
+
         $templatePath = storage_path('app/templates/mau_08_template.docx');
 
         // Tạo template chuẩn nếu chưa tồn tại
@@ -35,7 +44,14 @@ class WordExportService
             $this->ensureMau08TemplateExists($templatePath);
         }
 
-        $templateProcessor = new TemplateProcessor($templatePath);
+        // Tắt tạm thời E_NOTICE để tránh Laravel biến PHP Notice của tempnam() thành ErrorException
+        $oldErrorLevel = error_reporting();
+        error_reporting($oldErrorLevel & ~E_NOTICE);
+        try {
+            $templateProcessor = new TemplateProcessor($templatePath);
+        } finally {
+            error_reporting($oldErrorLevel);
+        }
 
         // 1. Xác định thời gian & Năm học, Học kỳ
         $firstSession = $schedules->first();
@@ -141,7 +157,13 @@ class WordExportService
         $fileName = "Ke_Hoach_Giang_Day_Mau_08_{$cleanClassName}_{$cleanSubjectCode}_" . time() . ".docx";
         $outputPath = $tempDir . DIRECTORY_SEPARATOR . $fileName;
 
-        $templateProcessor->saveAs($outputPath);
+        $oldErrorLevel = error_reporting();
+        error_reporting($oldErrorLevel & ~E_NOTICE);
+        try {
+            $templateProcessor->saveAs($outputPath);
+        } finally {
+            error_reporting($oldErrorLevel);
+        }
 
         return $outputPath;
     }
