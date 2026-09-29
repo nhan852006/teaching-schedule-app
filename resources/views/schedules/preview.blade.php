@@ -11,10 +11,10 @@
     <button id="btnSyncCalendar" class="btn btn-sm btn-academic-outline px-3 shadow-sm" onclick="syncCalendar()" aria-label="Đồng bộ lịch lên Google Calendar">
         <i class="fa-brands fa-google text-danger me-1" aria-hidden="true"></i> Đồng bộ Calendar
     </button>
-    <!-- Nút Xuất Sổ tay Word -->
+    <!-- Nút Xuất Kế hoạch Mẫu 08 -->
     <a href="{{ route('schedules.export_word', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
-       class="btn btn-sm btn-academic-primary px-3 shadow-sm" aria-label="Xuất file Word sổ tay giáo án">
-        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Sổ tay Word
+       class="btn btn-sm btn-academic-primary px-3 shadow-sm" aria-label="Xuất Kế hoạch giảng dạy Mẫu 08 (.docx)">
+        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Mẫu 08 (.docx)
     </a>
 @endsection
 

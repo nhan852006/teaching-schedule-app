@@ -1010,7 +1010,7 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Feature E: Export Word Handbook Trigger
+     * Feature E: Export Kế hoạch giảng dạy Mẫu số 8 (.docx)
      */
     public function exportWord($classId, $subjectId, WordExportService $wordService): BinaryFileResponse
     {
@@ -1019,9 +1019,9 @@ class ScheduleController extends Controller
 
         $schedules = $this->getSchedulesWithContent($classId, $subjectId);
 
-        $filePath = $wordService->exportHandbook($class, $subject, $schedules);
+        $filePath = $wordService->exportMau08($class, $subject, $schedules, request()->all());
 
-        $downloadName = 'So_Tay_Giang_Day_' . $class->name . '_' . $subject->code . '.docx';
+        $downloadName = 'Ke_Hoach_Giang_Day_Mau_08_' . $class->name . '_' . $subject->code . '.docx';
 
         return response()->download($filePath, $downloadName)->deleteFileAfterSend(true);
     }

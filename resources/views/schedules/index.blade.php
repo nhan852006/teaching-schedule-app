@@ -462,8 +462,8 @@
                                         <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i> Chi tiết
                                     </a>
                                     <a href="{{ route('schedules.export_word', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
-                                       class="btn btn-outline-success" title="Xuất file Word sổ tay giáo án" aria-label="Xuất Word lớp {{ $p->class?->name }}">
-                                        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Word
+                                       class="btn btn-outline-success" title="Xuất Kế hoạch giảng dạy Mẫu 08 (.docx)" aria-label="Xuất Mẫu 08 lớp {{ $p->class?->name }}">
+                                        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Mẫu 08
                                     </a>
                                 </div>
                             </td>
