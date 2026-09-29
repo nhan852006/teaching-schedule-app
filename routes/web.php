@@ -37,9 +37,21 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
     // 9. Đồng bộ Google Calendar
     Route::post('/class/{class_id}/subject/{subject_id}/sync-calendar', [ScheduleController::class, 'syncGoogleCalendar'])->name('sync_calendar');
 
-    // 10. Xuất Sổ tay giảng dạy ra file Word .docx
+    // 10. Xuất Kế hoạch giảng dạy Mẫu số 8 ra file Word .docx
     Route::get('/class/{class_id}/subject/{subject_id}/export-word', [ScheduleController::class, 'exportWord'])->name('export_word');
 
     // 11. Báo nghỉ đột xuất & Tự động đôn lịch
     Route::post('/postpone-and-shift', [ScheduleController::class, 'postponeAndShift'])->name('postpone_and_shift');
+
+    // 12. Xuất trọn bộ Sổ Giáo Án ra file Word .docx (Mẫu 9a, 9b, 9c)
+    Route::get('/class/{class_id}/subject/{subject_id}/export-lesson-plans', [ScheduleController::class, 'exportLessonPlansBooklet'])->name('export_lesson_plans');
+
+    // 13. Xuất lẻ giáo án của 1 buổi học cụ thể
+    Route::get('/schedule/{schedule_id}/export-lesson-plan', [ScheduleController::class, 'exportSingleLessonPlan'])->name('export_single_lesson_plan');
+
+    // 14. Cập nhật chi tiết giáo án của buổi học
+    Route::post('/subject-content/{id}/update-lesson-plan', [ScheduleController::class, 'updateLessonPlan'])->name('update_lesson_plan');
+
+    // 15. Cập nhật loại môn học (Tích hợp, Lý thuyết, Thực hành)
+    Route::post('/subject/{id}/update-type', [ScheduleController::class, 'updateSubjectType'])->name('update_subject_type');
 });

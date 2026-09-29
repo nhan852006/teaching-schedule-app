@@ -13,6 +13,7 @@ use App\Models\Classes;
 use App\Models\Schedule;
 use App\Services\GoogleCalendarService;
 use App\Services\WordExportService;
+use App\Services\LessonPlanWordService;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Carbon\Carbon;
 use Exception;
@@ -1024,5 +1025,90 @@ class ScheduleController extends Controller
         $downloadName = 'Ke_Hoach_Giang_Day_Mau_08_' . $class->name . '_' . $subject->code . '.docx';
 
         return response()->download($filePath, $downloadName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Xuất trọn bộ Sổ Giáo Án của môn học cho lớp (Trang bìa + toàn bộ giáo án các buổi)
+     */
+    public function exportLessonPlansBooklet($classId, $subjectId, LessonPlanWordService $lessonPlanService): BinaryFileResponse
+    {
+        $class = Classes::findOrFail($classId);
+        $subject = Subject::findOrFail($subjectId);
+
+        $schedules = $this->getSchedulesWithContent($classId, $subjectId);
+
+        $filePath = $lessonPlanService->exportBooklet($class, $subject, $schedules, request()->all());
+
+        $downloadName = 'So_Giao_An_' . $subject->form_code . '_' . $class->name . '_' . $subject->code . '.docx';
+
+        return response()->download($filePath, $downloadName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Xuất lẻ giáo án của 1 buổi học
+     */
+    public function exportSingleLessonPlan($scheduleId, LessonPlanWordService $lessonPlanService): BinaryFileResponse
+    {
+        $schedule = Schedule::with(['subject', 'class', 'teacher'])->findOrFail($scheduleId);
+
+        $filePath = $lessonPlanService->exportSinglePlan($schedule, request()->all());
+
+        $cleanClassName = $schedule->class?->name ?? 'Lop';
+        $cleanSubjectCode = $schedule->subject?->code ?? 'Mon';
+        $downloadName = 'Giao_An_So_' . $schedule->session_number . '_' . $cleanClassName . '_' . $cleanSubjectCode . '.docx';
+
+        return response()->download($filePath, $downloadName)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Cập nhật thông tin chi tiết giáo án của một buổi học (Mục tiêu, hoạt động, đồ dùng...)
+     */
+    public function updateLessonPlan(Request $request, $id): JsonResponse
+    {
+        $content = SubjectContent::findOrFail($id);
+
+        $validated = $request->validate([
+            'objective_knowledge'   => 'nullable|string',
+            'objective_skills'      => 'nullable|string',
+            'objective_autonomy'    => 'nullable|string',
+            'teaching_equipment'    => 'nullable|string',
+            'teaching_form'         => 'nullable|string',
+            'activity_lead_in'      => 'nullable|string',
+            'activity_main'         => 'nullable|string',
+            'activity_reinforce'    => 'nullable|string',
+            'activity_self_study'   => 'nullable|string',
+            'reference_material'    => 'nullable|string',
+            'experience_note'       => 'nullable|string',
+        ]);
+
+        $content->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã lưu cập nhật giáo án buổi số {$content->session_number} thành công!",
+            'data'    => $content,
+        ]);
+    }
+
+    /**
+     * Cập nhật loại môn học (Tích hợp 9c, Lý thuyết 9a, Thực hành 9b)
+     */
+    public function updateSubjectType(Request $request, $id): JsonResponse
+    {
+        $subject = Subject::findOrFail($id);
+
+        $validated = $request->validate([
+            'subject_type' => 'required|in:integrated,theory,practice',
+        ]);
+
+        $subject->update(['subject_type' => $validated['subject_type']]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => "Đã cập nhật môn {$subject->code} thành: {$subject->type_label}",
+            'subject_type' => $subject->subject_type,
+            'type_label'   => $subject->type_label,
+            'form_code'    => $subject->form_code,
+        ]);
     }
 }

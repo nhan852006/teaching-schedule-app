@@ -465,6 +465,10 @@
                                        class="btn btn-outline-success" title="Xuất Kế hoạch giảng dạy Mẫu 08 (.docx)" aria-label="Xuất Mẫu 08 lớp {{ $p->class?->name }}">
                                         <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Mẫu 08
                                     </a>
+                                    <a href="{{ route('schedules.export_lesson_plans', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
+                                       class="btn btn-outline-info" title="Xuất trọn bộ Sổ Giáo Án (.docx)" aria-label="Xuất Sổ Giáo Án lớp {{ $p->class?->name }}">
+                                        <i class="fa-solid fa-book-bookmark me-1" aria-hidden="true"></i> Sổ Giáo Án
+                                    </a>
                                 </div>
                             </td>
                         </tr>

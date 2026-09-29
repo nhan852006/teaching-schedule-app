@@ -16,6 +16,11 @@
        class="btn btn-sm btn-academic-primary px-3 shadow-sm" aria-label="Xuất Kế hoạch giảng dạy Mẫu 08 (.docx)">
         <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Mẫu 08 (.docx)
     </a>
+    <!-- Nút Xuất Sổ Giáo Án -->
+    <a href="{{ route('schedules.export_lesson_plans', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
+       class="btn btn-sm btn-academic-outline px-3 shadow-sm" aria-label="Xuất trọn bộ Sổ Giáo Án (.docx)">
+        <i class="fa-solid fa-book-bookmark text-primary me-1" aria-hidden="true"></i> Xuất Sổ Giáo Án (.docx)
+    </a>
 @endsection
 
 @section('content')
@@ -44,6 +49,22 @@
                     <span><i class="fa-solid fa-barcode me-1 text-secondary" aria-hidden="true"></i>Mã học phần: <strong class="text-dark">{{ $subject->code }}</strong></span>
                     <span>&middot;</span>
                     <span><i class="fa-solid fa-calendar-check me-1 text-secondary" aria-hidden="true"></i>Tổng quy mô: <strong class="text-dark">{{ $schedules->count() }} buổi học</strong></span>
+                </div>
+                <div class="mt-2 d-flex align-items-center gap-2">
+                    <span class="text-muted small"><i class="fa-solid fa-file-signature me-1 text-secondary"></i>Mẫu giáo án:</span>
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1" id="subjectTypeBadge">
+                        <i class="fa-solid fa-book-open me-1"></i> {{ $subject->type_label }}
+                    </span>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-xs btn-outline-secondary dropdown-toggle py-0 px-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.75rem;">
+                            Đổi mẫu
+                        </button>
+                        <ul class="dropdown-menu shadow-sm small">
+                            <li><a class="dropdown-item {{ $subject->effective_type === 'integrated' ? 'active' : '' }}" href="javascript:void(0)" onclick="changeSubjectType('integrated')"><i class="fa-solid fa-check me-1 {{ $subject->effective_type === 'integrated' ? '' : 'invisible' }}"></i> Tích hợp (Mẫu 9c)</a></li>
+                            <li><a class="dropdown-item {{ $subject->effective_type === 'theory' ? 'active' : '' }}" href="javascript:void(0)" onclick="changeSubjectType('theory')"><i class="fa-solid fa-check me-1 {{ $subject->effective_type === 'theory' ? '' : 'invisible' }}"></i> Lý thuyết (Mẫu 9a)</a></li>
+                            <li><a class="dropdown-item {{ $subject->effective_type === 'practice' ? 'active' : '' }}" href="javascript:void(0)" onclick="changeSubjectType('practice')"><i class="fa-solid fa-check me-1 {{ $subject->effective_type === 'practice' ? '' : 'invisible' }}"></i> Thực hành (Mẫu 9b)</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -160,7 +181,7 @@
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-secondary" 
                                             id="btn-save-{{ $item->id }}"
-                                            title="Lưu thay đổi dòng này"
+                                            title="Lưu thay đổi ngày/ca"
                                             aria-label="Lưu thay đổi cho buổi {{ $item->session_number }}"
                                             onclick="saveRowData({{ $item->id }})">
                                         <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
@@ -172,6 +193,35 @@
                                             onclick="openPostponeModal({{ $item->id }}, '{{ $item->teaching_date ? $item->teaching_date->format('Y-m-d') : '' }}', '{{ $item->session_shift }}', {{ $item->session_number }})">
                                         <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
                                     </button>
+                                    <!-- Nút Xem/Soạn chi tiết Giáo án -->
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-info" 
+                                            title="Xem & Soạn chi tiết giáo án buổi #{{ $item->session_number }}"
+                                            aria-label="Soạn giáo án buổi {{ $item->session_number }}"
+                                            data-session="{{ $item->session_number }}"
+                                            data-content-id="{{ $content ? $content->id : '' }}"
+                                            data-title="{{ $content ? $content->title_clean : ('Buổi ' . $item->session_number) }}"
+                                            data-knowledge="{{ $content?->objective_knowledge ?? '' }}"
+                                            data-skills="{{ $content?->objective_skills ?? '' }}"
+                                            data-autonomy="{{ $content?->objective_autonomy ?? '' }}"
+                                            data-equipment="{{ $content?->teaching_equipment ?? '' }}"
+                                            data-form="{{ $content?->teaching_form ?? '' }}"
+                                            data-leadin="{{ $content?->activity_lead_in ?? '' }}"
+                                            data-main="{{ $content?->activity_main ?? '' }}"
+                                            data-reinforce="{{ $content?->activity_reinforce ?? '' }}"
+                                            data-selfstudy="{{ $content?->activity_self_study ?? '' }}"
+                                            data-reference="{{ $content?->reference_material ?? '' }}"
+                                            data-experience="{{ $content?->experience_note ?? '' }}"
+                                            onclick="openLessonPlanModal(this)">
+                                        <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+                                    </button>
+                                    <!-- Nút Tải Giáo án Word buổi này -->
+                                    <a href="{{ route('schedules.export_single_lesson_plan', ['schedule_id' => $item->id]) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Tải Giáo án Word buổi #{{ $item->session_number }} (.docx)" 
+                                       aria-label="Tải Giáo án buổi {{ $item->session_number }}">
+                                        <i class="fa-solid fa-file-word" aria-hidden="true"></i>
+                                    </a>
                                 </div>
                                 <div class="saving-indicator text-muted mt-1" id="saving-{{ $item->id }}" style="display: none;" aria-live="polite">
                                     <i class="fa-solid fa-spinner fa-spin text-primary" aria-hidden="true"></i>
@@ -271,6 +321,109 @@
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Đóng</button>
                     <button type="submit" class="btn btn-sm btn-warning fw-bold px-3 shadow-sm" id="btnSubmitPostpone">
                         <i class="fa-solid fa-check me-1"></i> Xác Nhận Đôn Lịch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Soạn Chi Tiết Giáo Án -->
+<div class="modal fade" id="lessonPlanModal" tabindex="-1" aria-labelledby="lessonPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-academic-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold fs-6" id="lessonPlanModalLabel">
+                    <i class="fa-solid fa-book-open me-2"></i> Soạn Chi Tiết Giáo Án - Buổi #<span id="lpSessionNumber"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formLessonPlan" onsubmit="submitLessonPlan(event)">
+                <input type="hidden" id="lpContentId" value="">
+                <div class="modal-body p-4">
+                    <div class="alert alert-secondary small py-2 px-3 mb-3 border-0 bg-light">
+                        <i class="fa-solid fa-circle-info me-1 text-primary"></i>
+                        <strong>Tiêu đề bài học:</strong> <span id="lpLessonTitle" class="text-dark fw-bold"></span>
+                        <div class="text-muted mt-1 small">Nếu bạn để trống bất kỳ trường nào, khi xuất file Word hệ thống sẽ <strong>tự động tạo nội dung mẫu chuẩn sư phạm</strong> theo tên bài học của bạn.</div>
+                    </div>
+
+                    <!-- Nav Tabs -->
+                    <ul class="nav nav-tabs small fw-bold mb-3" id="lpTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-muc-tieu" data-bs-toggle="tab" data-bs-target="#tabMucTieu" type="button" role="tab">1. Mục tiêu & Đồ dùng</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-hoat-dong" data-bs-toggle="tab" data-bs-target="#tabHoatDong" type="button" role="tab">2. Hoạt động dạy học</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-tong-ket" data-bs-toggle="tab" data-bs-target="#tabTongKet" type="button" role="tab">3. Rút kinh nghiệm & Tài liệu</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="lpTabContent">
+                        <!-- Tab 1: Mục tiêu & Đồ dùng -->
+                        <div class="tab-pane fade show active" id="tabMucTieu" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">Kiến thức đạt được</label>
+                                <textarea class="form-control form-control-sm" id="lpObjectiveKnowledge" rows="2" placeholder="Ví dụ: Trình bày và phân tích được các khái niệm..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">Kỹ năng đạt được</label>
+                                <textarea class="form-control form-control-sm" id="lpObjectiveSkills" rows="2" placeholder="Ví dụ: Thực hiện thành thạo thao tác cấu hình..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">Mức độ tự chủ và trách nhiệm</label>
+                                <textarea class="form-control form-control-sm" id="lpObjectiveAutonomy" rows="2" placeholder="Ví dụ: Rèn luyện tác phong công nghiệp, an toàn lao động..."></textarea>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-bold text-dark">Đồ dùng và trang thiết bị dạy học</label>
+                                    <input type="text" class="form-control form-control-sm" id="lpTeachingEquipment" placeholder="Phòng máy tính, máy chiếu, bảng, viết...">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold text-dark">Hình thức tổ chức dạy học</label>
+                                    <input type="text" class="form-control form-control-sm" id="lpTeachingForm" placeholder="Tập trung toàn lớp, hướng dẫn nhóm...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Hoạt động dạy học -->
+                        <div class="tab-pane fade" id="tabHoatDong" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">1. Dẫn nhập (Khởi động, tạo tâm thế)</label>
+                                <textarea class="form-control form-control-sm" id="lpActivityLeadIn" rows="2" placeholder="Ổn định lớp, điểm danh, gợi mở vấn đề..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">2. Hoạt động chính (Giảng bài mới / Hướng dẫn / Giải quyết vấn đề)</label>
+                                <textarea class="form-control form-control-sm" id="lpActivityMain" rows="3" placeholder="Giáo viên trình bày bài học, làm mẫu; Học sinh thực hành..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">3. Củng cố kiến thức / Kết thúc bài</label>
+                                <textarea class="form-control form-control-sm" id="lpActivityReinforce" rows="2" placeholder="Tổng kết kiến thức trọng tâm, đánh giá kết quả luyện tập..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">4. Hướng dẫn tự học / Tự rèn luyện</label>
+                                <textarea class="form-control form-control-sm" id="lpActivitySelfStudy" rows="2" placeholder="Ôn lại kiến thức, chuẩn bị bài tiếp theo..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Rút kinh nghiệm & Tài liệu -->
+                        <div class="tab-pane fade" id="tabTongKet" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">Nguồn tài liệu tham khảo</label>
+                                <textarea class="form-control form-control-sm" id="lpReferenceMaterial" rows="2" placeholder="Giáo trình, sách tham khảo, tài liệu mạng..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-dark">Rút kinh nghiệm tổ chức thực hiện</label>
+                                <textarea class="form-control form-control-sm" id="lpExperienceNote" rows="3" placeholder="Ghi nhận tình hình học tập, lưu ý cần cải thiện cho buổi sau..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-4 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-sm btn-academic-primary px-3 shadow-sm" id="btnSubmitLessonPlan">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Lưu Giáo Án
                     </button>
                 </div>
             </form>
@@ -529,6 +682,151 @@
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = originalHtml;
             Swal.fire('Lỗi kết nối', 'Không thể kết nối đến máy chủ.', 'error');
+        });
+    }
+
+    // --- QUẢN LÝ SOẠN & XUẤT GIÁO ÁN ---
+    let lessonPlanModal = null;
+
+    function openLessonPlanModal(btn) {
+        if (!lessonPlanModal) {
+            lessonPlanModal = new bootstrap.Modal(document.getElementById('lessonPlanModal'));
+        }
+
+        const session = btn.getAttribute('data-session');
+        const contentId = btn.getAttribute('data-content-id');
+        const title = btn.getAttribute('data-title');
+
+        if (!contentId) {
+            Swal.fire('Thông báo', 'Buổi học này chưa có nội dung bài giảng để soạn giáo án.', 'info');
+            return;
+        }
+
+        document.getElementById('lpSessionNumber').innerText = session;
+        document.getElementById('lpContentId').value = contentId;
+        document.getElementById('lpLessonTitle').innerText = title;
+
+        document.getElementById('lpObjectiveKnowledge').value = btn.getAttribute('data-knowledge') || '';
+        document.getElementById('lpObjectiveSkills').value = btn.getAttribute('data-skills') || '';
+        document.getElementById('lpObjectiveAutonomy').value = btn.getAttribute('data-autonomy') || '';
+        document.getElementById('lpTeachingEquipment').value = btn.getAttribute('data-equipment') || '';
+        document.getElementById('lpTeachingForm').value = btn.getAttribute('data-form') || '';
+        document.getElementById('lpActivityLeadIn').value = btn.getAttribute('data-leadin') || '';
+        document.getElementById('lpActivityMain').value = btn.getAttribute('data-main') || '';
+        document.getElementById('lpActivityReinforce').value = btn.getAttribute('data-reinforce') || '';
+        document.getElementById('lpActivitySelfStudy').value = btn.getAttribute('data-selfstudy') || '';
+        document.getElementById('lpReferenceMaterial').value = btn.getAttribute('data-reference') || '';
+        document.getElementById('lpExperienceNote').value = btn.getAttribute('data-experience') || '';
+
+        const firstTab = new bootstrap.Tab(document.getElementById('tab-muc-tieu'));
+        firstTab.show();
+
+        lessonPlanModal.show();
+    }
+
+    function submitLessonPlan(e) {
+        e.preventDefault();
+        const contentId = document.getElementById('lpContentId').value;
+        const btnSubmit = document.getElementById('btnSubmitLessonPlan');
+        const originalHtml = btnSubmit.innerHTML;
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang lưu...';
+
+        const payload = {
+            objective_knowledge: document.getElementById('lpObjectiveKnowledge').value,
+            objective_skills: document.getElementById('lpObjectiveSkills').value,
+            objective_autonomy: document.getElementById('lpObjectiveAutonomy').value,
+            teaching_equipment: document.getElementById('lpTeachingEquipment').value,
+            teaching_form: document.getElementById('lpTeachingForm').value,
+            activity_lead_in: document.getElementById('lpActivityLeadIn').value,
+            activity_main: document.getElementById('lpActivityMain').value,
+            activity_reinforce: document.getElementById('lpActivityReinforce').value,
+            activity_self_study: document.getElementById('lpActivitySelfStudy').value,
+            reference_material: document.getElementById('lpReferenceMaterial').value,
+            experience_note: document.getElementById('lpExperienceNote').value,
+        };
+
+        const updateUrl = "{{ url('schedules/subject-content') }}/" + contentId + "/update-lesson-plan";
+
+        fetch(updateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalHtml;
+
+            if (data.success) {
+                lessonPlanModal.hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã lưu giáo án!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Lỗi', data.message || 'Không thể lưu giáo án.', 'error');
+            }
+        })
+        .catch(err => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalHtml;
+            Swal.fire('Lỗi kết nối', 'Không thể kết nối đến máy chủ.', 'error');
+        });
+    }
+
+    function changeSubjectType(newType) {
+        const subjectId = {{ $subject->id }};
+        const updateTypeUrl = "{{ url('schedules/subject') }}/" + subjectId + "/update-type";
+
+        Swal.fire({
+            title: 'Đổi mẫu giáo án?',
+            text: 'Bạn có chắc muốn chuyển đổi loại giáo án cho môn học này?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Đồng ý đổi',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(updateTypeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ subject_type: newType })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Thành công!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Lỗi', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ.', 'error');
+                });
+            }
         });
     }
 </script>
