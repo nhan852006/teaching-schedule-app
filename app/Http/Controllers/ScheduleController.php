@@ -328,46 +328,29 @@ class ScheduleController extends Controller
         ]);
 
         $file = $request->file('csv_file');
-        $handle = fopen($file->getRealPath(), 'r');
+        $csvData = $this->readCsvRows($file->getRealPath());
 
-        if (!$handle) {
-            return back()->with('error', 'Không thể đọc file CSV tải lên.');
+        if (empty($csvData['rows'])) {
+            return back()->with('error', 'File CSV không có dữ liệu hoặc không đọc được định dạng hàng.');
         }
 
-        $bom = fread($handle, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($handle);
-        }
-
-        $header = fgetcsv($handle, 1000, ',');
-        if (!$header) {
-            fclose($handle);
-            return back()->with('error', 'File CSV không có dữ liệu.');
-        }
-
-        $header = array_map('trim', $header);
         $rowCount = 0;
-
         DB::beginTransaction();
         try {
-            while (($row = fgetcsv($handle, 2000, ',')) !== false) {
-                if (empty(array_filter($row))) {
-                    continue;
+            foreach ($csvData['rows'] as $data) {
+                $subjectCode   = $this->getFlexibleValue($data, ['Mã Môn', 'Mã môn', 'Ma Mon', 'code', 'subject_code', 'Mã HP', 'Mã học phần']);
+                $subjectName   = $this->getFlexibleValue($data, ['Tên Môn', 'Tên môn', 'Ten Mon', 'name', 'subject_name', 'Tên HP', 'Tên môn học']);
+                $sessionNumber = (int)$this->getFlexibleValue($data, ['Buổi số', 'Buổi', 'Buoi so', 'session_number', 'session', 'STT', 'Tiết']);
+                $content       = $this->getFlexibleValue($data, ['Nội dung giảng dạy', 'Nội dung', 'Noi dung', 'content', 'Tên bài giảng', 'Bài học']);
+                $theoryTime    = (int)$this->getFlexibleValue($data, ['Số tiết LT', 'Số tiết lý thuyết', 'LT', 'Ly thuyet', 'theory_time']);
+                $practiceTime  = (int)$this->getFlexibleValue($data, ['Số tiết TH', 'Số tiết thực hành', 'TH', 'Thuc hanh', 'practice_time']);
+
+                // Nếu không có mã môn nhưng có tên môn, tự sinh mã môn
+                if (!$subjectCode && $subjectName) {
+                    $subjectCode = strtoupper(\Illuminate\Support\Str::slug($subjectName, ''));
                 }
 
-                $data = array_combine($header, array_map('trim', $row));
-                if (!$data) {
-                    continue;
-                }
-
-                $subjectCode   = $data['Mã Môn'] ?? null;
-                $subjectName   = $data['Tên Môn'] ?? null;
-                $sessionNumber = isset($data['Buổi số']) ? (int)$data['Buổi số'] : 0;
-                $content       = $data['Nội dung giảng dạy'] ?? '';
-                $theoryTime    = isset($data['Số tiết LT']) ? (int)$data['Số tiết LT'] : 0;
-                $practiceTime  = isset($data['Số tiết TH']) ? (int)$data['Số tiết TH'] : 0;
-
-                if (!$subjectCode || !$sessionNumber) {
+                if (!$subjectCode || $sessionNumber <= 0) {
                     continue;
                 }
 
@@ -403,12 +386,11 @@ class ScheduleController extends Controller
             }
 
             DB::commit();
-            fclose($handle);
 
-            return back()->with('success', "Đã import thành công {$rowCount} buổi nội dung môn học cho {$currentTeacher->name}.");
+            return back()->with('success', "Đã import thành công {$rowCount} buổi nội dung môn học cho {$currentTeacher->name} (định dạng dấu: '{$csvData['delimiter']}').");
         } catch (Exception $e) {
             DB::rollBack();
-            fclose($handle);
+            Log::error("Lỗi khi import môn học CSV: " . $e->getMessage());
             return back()->with('error', 'Lỗi khi xử lý CSV: ' . $e->getMessage());
         }
     }
@@ -425,47 +407,24 @@ class ScheduleController extends Controller
         ]);
 
         $file = $request->file('csv_file');
-        $handle = fopen($file->getRealPath(), 'r');
+        $csvData = $this->readCsvRows($file->getRealPath());
 
-        if (!$handle) {
-            return back()->with('error', 'Không thể đọc file CSV tải lên.');
+        if (empty($csvData['rows'])) {
+            return back()->with('error', 'File CSV không có dữ liệu hoặc không đọc được định dạng hàng.');
         }
-
-        $bom = fread($handle, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($handle);
-        }
-
-        $header = fgetcsv($handle, 1000, ',');
-        if (!$header) {
-            fclose($handle);
-            return back()->with('error', 'File CSV không có dữ liệu.');
-        }
-        $header = array_map('trim', $header);
-
-        $rawRows = [];
-        while (($row = fgetcsv($handle, 1000, ',')) !== false) {
-            if (empty(array_filter($row))) {
-                continue;
-            }
-            $mapped = array_combine($header, array_map('trim', $row));
-            if ($mapped) {
-                $rawRows[] = $mapped;
-            }
-        }
-        fclose($handle);
 
         DB::beginTransaction();
         try {
             $grouped = [];
 
-            foreach ($rawRows as $item) {
-                $className   = $item['Tên Lớp'] ?? '';
-                $subjectName = $item['Tên Môn'] ?? '';
-                $teachingDate = $item['Ngày'] ?? ($item['Ngày (YYYY-MM-DD)'] ?? '');
-                $shift        = $item['Buổi'] ?? ($item['Buổi (Sáng/Chiều)'] ?? 'Sáng');
+            foreach ($csvData['rows'] as $item) {
+                $className    = $this->getFlexibleValue($item, ['Tên Lớp', 'Tên lớp', 'Lớp', 'Ten Lop', 'class', 'class_name']);
+                $subjectName  = $this->getFlexibleValue($item, ['Tên Môn', 'Tên môn', 'Môn', 'Môn học', 'Mã Môn', 'Ten Mon', 'subject', 'subject_name']);
+                $rawDate      = $this->getFlexibleValue($item, ['Ngày', 'Ngày học', 'Ngày (YYYY-MM-DD)', 'date', 'teaching_date']);
+                $rawShift     = $this->getFlexibleValue($item, ['Buổi', 'Ca', 'Ca học', 'Buổi học', 'Buổi (Sáng/Chiều)', 'shift', 'session_shift'], 'Sáng');
 
-                $shift = (stripos($shift, 'chiều') !== false || stripos($shift, 'chieu') !== false) ? 'Chiều' : 'Sáng';
+                $shift = (stripos($rawShift, 'chiều') !== false || stripos($rawShift, 'chieu') !== false || strtoupper(trim($rawShift)) === 'C') ? 'Chiều' : 'Sáng';
+                $teachingDate = $this->parseFlexibleDate($rawDate);
 
                 if (!$className || !$subjectName || !$teachingDate) {
                     continue;
@@ -490,7 +449,7 @@ class ScheduleController extends Controller
                 $grouped[$key]['class'] = $class;
                 $grouped[$key]['subject'] = $subject;
                 $grouped[$key]['rows'][] = [
-                    'date'  => date('Y-m-d', strtotime($teachingDate)),
+                    'date'  => $teachingDate,
                     'shift' => $shift,
                 ];
             }
@@ -528,11 +487,155 @@ class ScheduleController extends Controller
 
             DB::commit();
 
-            return back()->with('success', "Đã import và gán lịch dạy thành công cho {$currentTeacher->name}!");
+            return back()->with('success', "Đã import và phân bổ {$totalImported} buổi dạy thành công cho {$currentTeacher->name} (định dạng dấu: '{$csvData['delimiter']}').");
         } catch (Exception $e) {
             DB::rollBack();
+            Log::error("Lỗi khi import lịch giảng CSV: " . $e->getMessage());
             return back()->with('error', 'Lỗi khi import lịch giảng: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Tự động phát hiện dấu phân cách CSV (; , \t |)
+     */
+    protected function detectCsvDelimiter(string $filePath): string
+    {
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return ',';
+        }
+
+        // Bỏ qua BOM nếu có
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        $firstLine = fgets($handle);
+        fclose($handle);
+
+        if (!$firstLine) {
+            return ',';
+        }
+
+        $delimiters = [';' => 0, ',' => 0, "\t" => 0, '|' => 0];
+        foreach (array_keys($delimiters) as $delim) {
+            $delimiters[$delim] = substr_count($firstLine, $delim);
+        }
+
+        arsort($delimiters);
+        $bestDelimiter = key($delimiters);
+
+        return $delimiters[$bestDelimiter] > 0 ? $bestDelimiter : ',';
+    }
+
+    /**
+     * Đọc và chuẩn hóa dữ liệu từ file CSV (hỗ trợ BOM UTF-8, dấu ; hoặc ,, multiline text)
+     */
+    protected function readCsvRows(string $filePath): array
+    {
+        $delimiter = $this->detectCsvDelimiter($filePath);
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            return ['header' => [], 'rows' => [], 'delimiter' => $delimiter];
+        }
+
+        // Bỏ qua BOM UTF-8 nếu có
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
+
+        // Đọc dòng tiêu đề (header)
+        $rawHeader = fgetcsv($handle, 2000, $delimiter);
+        if (!$rawHeader) {
+            fclose($handle);
+            return ['header' => [], 'rows' => [], 'delimiter' => $delimiter];
+        }
+
+        // Chuẩn hóa header: xóa BOM sót lại, trim khoảng trắng cả 2 đầu
+        $header = [];
+        foreach ($rawHeader as $col) {
+            $cleaned = preg_replace('/^\xEF\xBB\xBF/', '', (string)$col);
+            $cleaned = trim($cleaned, " \t\n\r\0\x0B\xc2\xa0");
+            $header[] = $cleaned;
+        }
+
+        $rows = [];
+        $headerCount = count($header);
+
+        while (($row = fgetcsv($handle, 4000, $delimiter)) !== false) {
+            // Bỏ qua hàng trống
+            if (empty(array_filter($row, fn($val) => trim((string)$val) !== ''))) {
+                continue;
+            }
+
+            // Đảm bảo số lượng cột khớp chính xác với header, triệt tiêu lỗi array_combine
+            $rowCount = count($row);
+            if ($rowCount < $headerCount) {
+                $row = array_pad($row, $headerCount, '');
+            } elseif ($rowCount > $headerCount) {
+                $row = array_slice($row, 0, $headerCount);
+            }
+
+            $trimmedRow = array_map(function($val) {
+                return trim((string)$val, " \t\n\r\0\x0B\xc2\xa0");
+            }, $row);
+
+            $rows[] = array_combine($header, $trimmedRow);
+        }
+
+        fclose($handle);
+
+        return [
+            'delimiter' => $delimiter,
+            'header'    => $header,
+            'rows'      => $rows,
+        ];
+    }
+
+    /**
+     * Lấy giá trị linh hoạt từ một hàng dựa trên danh sách các tên cột tương đương
+     */
+    protected function getFlexibleValue(array $row, array $candidateKeys, $default = '')
+    {
+        // 1. So khớp chính xác
+        foreach ($candidateKeys as $key) {
+            if (isset($row[$key]) && trim((string)$row[$key]) !== '') {
+                return trim((string)$row[$key]);
+            }
+        }
+
+        // 2. So khớp không phân biệt hoa thường và khoảng trắng
+        foreach ($row as $rowKey => $rowVal) {
+            $normalizedRowKey = mb_strtolower(trim((string)$rowKey));
+            foreach ($candidateKeys as $key) {
+                if ($normalizedRowKey === mb_strtolower(trim((string)$key))) {
+                    return trim((string)$rowVal);
+                }
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * Chuẩn hóa định dạng ngày từ dd/mm/yyyy hoặc yyyy-mm-dd sang chuẩn yyyy-mm-dd
+     */
+    protected function parseFlexibleDate(string $dateStr): string
+    {
+        $dateStr = trim($dateStr);
+        if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/', $dateStr, $matches)) {
+            // dd/mm/yyyy -> yyyy-mm-dd
+            return sprintf('%04d-%02d-%02d', $matches[3], $matches[2], $matches[1]);
+        }
+        if (preg_match('/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $dateStr, $matches)) {
+            // yyyy-mm-dd
+            return sprintf('%04d-%02d-%02d', $matches[1], $matches[2], $matches[3]);
+        }
+        $ts = strtotime($dateStr);
+        return $ts ? date('Y-m-d', $ts) : date('Y-m-d');
     }
 
     /**
