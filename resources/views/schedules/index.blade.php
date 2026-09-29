@@ -1,352 +1,350 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Quản lý Kế hoạch Giảng dạy & Sổ tay Giáo án</title>
-    
-    <!-- Bootstrap 5 CSS & FontAwesome 6 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- Google Fonts: Plus Jakarta Sans -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+@extends('layouts.app')
 
-    <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --card-border: #e2e8f0;
-        }
-        body {
-            background-color: #f1f5f9;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: #1e293b;
-        }
-        .navbar-custom {
-            background: #ffffff;
-            border-bottom: 1px solid var(--card-border);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-        }
-        .stat-card {
-            background: #ffffff;
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
-            padding: 1.15rem 1.25rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px -4px rgba(0,0,0,0.05);
-        }
-        .stat-icon-box {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-        }
-        .card-custom {
-            background: #ffffff;
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-        }
+@section('title', 'Hồ sơ Kế hoạch & Lịch Giảng dạy - ' . $currentTeacher->name)
+@section('meta_description', 'Bảng điều khiển quản lý kế hoạch giảng dạy, tra cứu lịch học theo tháng và xuất sổ tay giáo án cho giảng viên ' . $currentTeacher->name)
 
-        /* Interactive Calendar Styles */
-        .calendar-table {
-            table-layout: fixed;
-            margin-bottom: 0;
-            border-collapse: separate;
-            border-spacing: 4px;
-        }
-        .calendar-table th {
-            text-align: center;
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 0.6rem 0.2rem;
-            color: #64748b;
-            background: transparent;
-            border: none;
-        }
-        .calendar-table th.sunday-col {
-            color: #ef4444;
-        }
-        .cal-day-cell {
-            height: 86px;
-            vertical-align: top;
-            padding: 6px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
-            background: #ffffff;
-            cursor: pointer;
-            transition: all 0.15s ease-in-out;
-            position: relative;
-        }
-        .cal-day-cell:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-            transform: scale(1.02);
-            z-index: 2;
-        }
-        .cal-day-cell.dimmed {
-            background: #f8fafc;
-            opacity: 0.35;
-            cursor: default;
-        }
-        .cal-day-cell.dimmed:hover {
-            transform: none;
-            background: #f8fafc;
-        }
-        .cal-day-cell.sunday {
-            background: #fef2f2;
-            border-color: #fee2e2;
-        }
-        .cal-day-cell.has-events {
-            background: #eff6ff;
-            border-color: #bfdbfe;
-        }
-        .cal-day-cell.active-selected {
-            border: 2px solid #2563eb !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-            background: #e0f2fe !important;
-        }
-        .cal-day-number {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: #334155;
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            line-height: 24px;
-            text-align: center;
-            border-radius: 50%;
-        }
-        .cal-day-cell.today .cal-day-number {
-            background: #2563eb;
-            color: #ffffff;
-        }
-        .cal-badge {
-            font-size: 0.68rem;
-            padding: 2px 4px;
-            border-radius: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-            margin-top: 3px;
-            font-weight: 600;
-        }
-        .cal-badge-sang {
-            background: #fef3c7;
-            color: #92400e;
-            border-left: 2px solid #f59e0b;
-        }
-        .cal-badge-chieu {
-            background: #e0e7ff;
-            color: #3730a3;
-            border-left: 2px solid #6366f1;
-        }
+@push('styles')
+<style>
+    /* Academic KPI Stat Cards */
+    .stat-academic-card {
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid var(--edu-border);
+        border-left: 4px solid var(--edu-primary);
+        padding: 1.15rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(15, 39, 74, 0.04);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .stat-academic-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(15, 39, 74, 0.08);
+    }
+    .stat-academic-card.card-accent-gold {
+        border-left-color: var(--edu-gold);
+    }
+    .stat-academic-card.card-accent-teal {
+        border-left-color: var(--edu-teal);
+    }
+    .stat-academic-card.card-accent-burgundy {
+        border-left-color: var(--edu-burgundy);
+    }
 
-        /* Detail Side Panel */
-        .side-panel {
-            background: #ffffff;
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .side-panel-header {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--card-border);
-            background: #f8fafc;
-            border-top-left-radius: 14px;
-            border-top-right-radius: 14px;
-        }
-        .side-panel-body {
-            padding: 1.25rem;
-            flex: 1;
-            overflow-y: auto;
-            max-height: 540px;
-        }
-        .session-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 0.85rem;
-            background: #ffffff;
-            transition: all 0.2s ease;
-        }
-        .session-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            border-color: #cbd5e1;
-        }
-    </style>
-</head>
-<body>
+    .stat-number {
+        font-family: var(--font-heading);
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: var(--edu-navy-900);
+        line-height: 1.1;
+    }
 
-<!-- 1. Top Navbar -->
-<nav class="navbar navbar-expand-lg navbar-custom sticky-top py-2">
-    <div class="container-fluid px-lg-5">
-        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="{{ route('schedules.index') }}">
-            <div class="stat-icon-box bg-primary text-white" style="width: 36px; height: 36px; font-size: 1.05rem;">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </div>
-            <span>TeachPlan <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.65rem;">PRO</span></span>
-        </a>
+    /* Academic Calendar Styles */
+    .calendar-table {
+        table-layout: fixed;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 4px;
+        width: 100%;
+    }
+    .calendar-table th {
+        text-align: center;
+        font-family: var(--font-heading);
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 0.65rem 0.25rem;
+        color: var(--edu-navy-900);
+        background: #f1f5f9;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+    }
+    .calendar-table th.sunday-col {
+        color: var(--edu-burgundy);
+        background: #ffe4e6;
+        border-color: #fecdd3;
+    }
+    .cal-day-cell {
+        height: 90px;
+        vertical-align: top;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        position: relative;
+    }
+    .cal-day-cell:hover {
+        background: #f8fafc;
+        border-color: var(--edu-primary);
+        box-shadow: 0 2px 8px rgba(27, 77, 137, 0.15);
+        z-index: 2;
+    }
+    .cal-day-cell.dimmed {
+        background: #f8fafc;
+        opacity: 0.4;
+        cursor: default;
+        border-color: #e2e8f0;
+    }
+    .cal-day-cell.dimmed:hover {
+        box-shadow: none;
+        border-color: #e2e8f0;
+    }
+    .cal-day-cell.sunday {
+        background: #fff5f5;
+        border-color: #fed7d7;
+    }
+    .cal-day-cell.has-events {
+        background: #f0f7ff;
+        border-color: #93c5fd;
+    }
+    .cal-day-cell.active-selected {
+        border: 2px solid var(--edu-primary) !important;
+        box-shadow: 0 0 0 3px rgba(27, 77, 137, 0.25);
+        background: #e0f2fe !important;
+    }
+    .cal-day-number {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--edu-navy-900);
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 4px;
+    }
+    .cal-day-cell.today .cal-day-number {
+        background: var(--edu-primary);
+        color: #ffffff;
+    }
 
-        <!-- Right Side: Teacher Switcher & Action Buttons -->
-        <div class="d-flex align-items-center gap-2 ms-auto">
-            <!-- Form Teacher Switcher -->
-            <form action="{{ route('schedules.teacher.switch') }}" method="POST" class="d-flex align-items-center gap-2 m-0 me-2">
-                @csrf
-                <span class="text-muted small d-none d-md-inline fw-semibold"><i class="fa-solid fa-user-tie text-primary me-1"></i> Giảng viên:</span>
-                <select name="teacher_id" class="form-select form-select-sm fw-bold border-primary shadow-none" style="min-width: 210px; border-radius: 8px;" onchange="this.form.submit()">
-                    @foreach($allTeachers as $t)
-                        <option value="{{ $t->id }}" {{ $t->id === $currentTeacher->id ? 'selected' : '' }}>
-                            👨‍🏫 {{ $t->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </form>
+    /* Shift Badges */
+    .cal-badge {
+        font-size: 0.7rem;
+        padding: 2px 5px;
+        border-radius: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+        margin-top: 3px;
+        font-weight: 600;
+    }
+    .cal-badge-sang {
+        background: #fef3c7;
+        color: #78350f;
+        border-left: 3px solid #d97706;
+    }
+    .cal-badge-chieu {
+        background: #e0e7ff;
+        color: #1e3a8a;
+        border-left: 3px solid #3b82f6;
+    }
 
-            <div class="d-none d-lg-flex gap-2">
-                <button type="button" class="btn btn-sm btn-primary fw-semibold px-3 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#modalAddSubject">
-                    <i class="fa-solid fa-folder-plus me-1"></i> + Môn mới
-                </button>
-                <button type="button" class="btn btn-sm btn-success fw-semibold px-3 shadow-sm rounded-3" data-bs-toggle="modal" data-bs-target="#modalGeneratePlan">
-                    <i class="fa-solid fa-calendar-plus me-1"></i> + Lập Lịch
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-2 rounded-3" data-bs-toggle="modal" data-bs-target="#modalImportCSV" title="Import CSV">
-                    <i class="fa-solid fa-file-csv"></i>
-                </button>
-            </div>
+    /* Side Panel */
+    .side-panel {
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid var(--edu-border);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .side-panel-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 2px solid var(--edu-border-light);
+        background: #f8fafc;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+    .side-panel-body {
+        padding: 1.25rem;
+        flex: 1;
+        overflow-y: auto;
+        max-height: 560px;
+    }
+    .session-card {
+        border: 1px solid var(--edu-border);
+        border-left: 3px solid var(--edu-primary);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 0.9rem;
+        background: #ffffff;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .session-card:hover {
+        border-color: #94a3b8;
+        box-shadow: 0 4px 10px rgba(15, 39, 74, 0.05);
+    }
+</style>
+@endpush
+
+@section('header_actions')
+    <!-- Giảng viên Switcher -->
+    <form action="{{ route('schedules.teacher.switch') }}" method="POST" class="d-flex align-items-center gap-2 m-0 me-2" aria-label="Chọn giảng viên làm việc">
+        @csrf
+        <label for="teacherSelect" class="text-muted small d-none d-md-inline fw-semibold text-nowrap">
+            <i class="fa-solid fa-chalkboard-user text-secondary me-1" aria-hidden="true"></i>Giảng viên:
+        </label>
+        <select id="teacherSelect" name="teacher_id" class="form-select form-select-sm fw-bold border-secondary-subtle" style="min-width: 210px;" onchange="this.form.submit()">
+            @foreach($allTeachers as $t)
+                <option value="{{ $t->id }}" {{ $t->id === $currentTeacher->id ? 'selected' : '' }}>
+                    {{ $t->name }}
+                </option>
+            @endforeach
+        </select>
+    </form>
+
+    <div class="d-none d-lg-flex gap-2">
+        <button type="button" class="btn btn-sm btn-academic-primary px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAddSubject" aria-label="Thêm môn học mới">
+            <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Thêm Môn
+        </button>
+        <button type="button" class="btn btn-sm btn-success fw-semibold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalGeneratePlan" aria-label="Lập kế hoạch giảng dạy">
+            <i class="fa-solid fa-calendar-check me-1" aria-hidden="true"></i> Lập Lịch
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary px-2" data-bs-toggle="modal" data-bs-target="#modalImportCSV" title="Import dữ liệu CSV" aria-label="Import dữ liệu CSV">
+            <i class="fa-solid fa-file-import" aria-hidden="true"></i>
+        </button>
+    </div>
+@endsection
+
+@section('content')
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Semantic Page Heading (H1 for SEO & A11y) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h1 class="h3 fw-bold mb-1 text-dark">
+                Kế hoạch Giảng dạy Học kỳ I (2026 - 2027)
+            </h1>
+            <p class="text-muted small mb-0">
+                Hồ sơ học vụ của Giảng viên: <strong class="text-primary">{{ $currentTeacher->name }}</strong>
+                &middot; Đơn vị: <strong>Bộ môn Công nghệ Thông tin</strong>
+            </p>
+        </div>
+        <div class="text-muted small mt-2 mt-md-0">
+            <span class="badge bg-light text-dark border px-2 py-1"><i class="fa-regular fa-clock me-1 text-secondary"></i>Cập nhật: {{ date('d/m/Y') }}</span>
         </div>
     </div>
-</nav>
 
-<!-- Main Container -->
-<div class="container-fluid px-lg-5 py-3">
-
-    <!-- Alerts -->
+    <!-- Thông báo Alerts -->
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-3 py-2" role="alert">
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-2 mb-3 py-2" role="alert">
             <div class="d-flex align-items-center small">
-                <i class="fa-solid fa-circle-check fs-6 me-2 text-success"></i>
+                <i class="fa-solid fa-circle-check fs-6 me-2 text-success" aria-hidden="true"></i>
                 <div>{{ session('success') }}</div>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng thông báo"></button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3 mb-3 py-2" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-2 mb-3 py-2" role="alert">
             <div class="d-flex align-items-center small">
-                <i class="fa-solid fa-triangle-exclamation fs-6 me-2 text-danger"></i>
+                <i class="fa-solid fa-triangle-exclamation fs-6 me-2 text-danger" aria-hidden="true"></i>
                 <div>{{ session('error') }}</div>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng thông báo"></button>
         </div>
     @endif
 
-    <!-- 2. Macro KPI Cards (Tổng quan vĩ mô) -->
-    <div class="row g-3 mb-4">
-        <!-- Card 1 -->
-        <div class="col-6 col-xl-3">
-            <div class="stat-card d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Lớp đang dạy</div>
-                    <div class="fs-3 fw-bold text-dark mt-1">{{ $totalClassesCount }} <span class="fs-6 fw-normal text-muted">lớp</span></div>
-                    <div class="text-success small fw-medium mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-check me-1"></i>Phân công hiện tại</div>
-                </div>
-                <div class="stat-icon-box bg-primary-subtle text-primary">
-                    <i class="fa-solid fa-chalkboard-user"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 2 -->
-        <div class="col-6 col-xl-3">
-            <div class="stat-card d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Môn phụ trách</div>
-                    <div class="fs-3 fw-bold text-dark mt-1">{{ $totalSubjectsCount }} <span class="fs-6 fw-normal text-muted">môn</span></div>
-                    <div class="text-primary small fw-medium mt-1" style="font-size: 0.75rem;"><i class="fa-solid fa-book me-1"></i>{{ $mySubjects->count() }} môn tạo bởi tôi</div>
-                </div>
-                <div class="stat-icon-box bg-success-subtle text-success">
-                    <i class="fa-solid fa-book-open"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 3 -->
-        <div class="col-6 col-xl-3">
-            <div class="stat-card d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Tổng số buổi dạy</div>
-                    <div class="fs-3 fw-bold text-dark mt-1">{{ $totalSessionsCount }} <span class="fs-6 fw-normal text-muted">buổi</span></div>
-                    <div class="text-muted small fw-medium mt-1" style="font-size: 0.75rem;"><i class="fa-regular fa-clock me-1"></i>Thứ 2 - Thứ 7</div>
-                </div>
-                <div class="stat-icon-box bg-warning-subtle text-warning">
-                    <i class="fa-solid fa-calendar-days"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Card 4 -->
-        <div class="col-6 col-xl-3">
-            <div class="stat-card d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Google Calendar</div>
-                    <div class="fs-3 fw-bold text-dark mt-1">{{ $syncPercentage }}%</div>
-                    <div class="text-muted small mt-1" style="font-size: 0.75rem;">
-                        <span class="badge bg-success-subtle text-success">{{ $syncSynced }} synced</span>
-                        <span class="badge bg-warning-subtle text-warning">{{ $syncPending }} pending</span>
+    <!-- Macro KPI Cards -->
+    <section aria-labelledby="kpi-heading" class="mb-4">
+        <h2 id="kpi-heading" class="visually-hidden">Chỉ số khối lượng giảng dạy</h2>
+        <div class="row g-3">
+            <!-- Card 1 -->
+            <div class="col-6 col-xl-3">
+                <div class="stat-academic-card d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Lớp giảng dạy</div>
+                        <div class="stat-number mt-1">{{ $totalClassesCount }} <span class="fs-6 fw-normal text-muted">lớp</span></div>
+                        <div class="text-success small fw-medium mt-1" style="font-size: 0.75rem;">Phân công hiện hành</div>
+                    </div>
+                    <div class="fs-2 text-primary opacity-50" aria-hidden="true">
+                        <i class="fa-solid fa-users-rectangle"></i>
                     </div>
                 </div>
-                <div class="stat-icon-box bg-info-subtle text-info">
-                    <i class="fa-brands fa-google"></i>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="col-6 col-xl-3">
+                <div class="stat-academic-card card-accent-teal d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Môn phụ trách</div>
+                        <div class="stat-number mt-1">{{ $totalSubjectsCount }} <span class="fs-6 fw-normal text-muted">học phần</span></div>
+                        <div class="text-primary small fw-medium mt-1" style="font-size: 0.75rem;">{{ $mySubjects->count() }} môn cá nhân</div>
+                    </div>
+                    <div class="fs-2 text-teal opacity-50" style="color: var(--edu-teal);" aria-hidden="true">
+                        <i class="fa-solid fa-book-bookmark"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="col-6 col-xl-3">
+                <div class="stat-academic-card card-accent-gold d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Tổng số buổi học</div>
+                        <div class="stat-number mt-1">{{ $totalSessionsCount }} <span class="fs-6 fw-normal text-muted">buổi</span></div>
+                        <div class="text-muted small fw-medium mt-1" style="font-size: 0.75rem;">Thứ 2 - Thứ 7</div>
+                    </div>
+                    <div class="fs-2 text-warning opacity-50" aria-hidden="true">
+                        <i class="fa-solid fa-calendar-days"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="col-6 col-xl-3">
+                <div class="stat-academic-card card-accent-burgundy d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Google Calendar</div>
+                        <div class="stat-number mt-1">{{ $syncPercentage }}%</div>
+                        <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ $syncSynced }} synced</span>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ $syncPending }} pending</span>
+                        </div>
+                    </div>
+                    <div class="fs-2 text-danger opacity-50" aria-hidden="true">
+                        <i class="fa-brands fa-google"></i>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- 3. Interactive Monthly Calendar & Side Detail Panel (Trọng tâm trải nghiệm) -->
+    <!-- Interactive Monthly Calendar & Side Detail Panel -->
     <div class="row g-4 mb-4">
         <!-- Cột Trái (8 phần): Lịch Tháng Trực quan -->
         <div class="col-lg-8">
-            <div class="card card-custom p-3 p-md-4 h-100">
+            <section class="card-academic p-3 p-md-4 h-100" aria-labelledby="calendar-heading">
                 <!-- Calendar Toolbar -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
                     <!-- Month Navigation -->
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="changeMonth(-1)" title="Tháng trước">
-                            <i class="fa-solid fa-chevron-left"></i>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2" onclick="changeMonth(-1)" title="Tháng trước" aria-label="Chuyển đến tháng trước">
+                            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
                         </button>
-                        <h5 class="fw-bold text-dark mb-0 mx-2" id="currentMonthYearLabel">
+                        <h2 class="h5 fw-bold text-dark mb-0 mx-2" id="currentMonthYearLabel">
                             Tháng 10 / 2026
-                        </h5>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2" onclick="changeMonth(1)" title="Tháng sau">
-                            <i class="fa-solid fa-chevron-right"></i>
+                        </h2>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-2" onclick="changeMonth(1)" title="Tháng sau" aria-label="Chuyển đến tháng sau">
+                            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
                         </button>
-                        <!-- Month Picker input -->
-                        <input type="month" id="monthPicker" class="form-control form-control-sm ms-2" style="width: 145px; border-radius: 8px;" onchange="onMonthPickerChange(this.value)">
+                        <!-- Month Picker -->
+                        <input type="month" id="monthPicker" class="form-control form-control-sm ms-2" style="width: 145px;" onchange="onMonthPickerChange(this.value)" aria-label="Chọn tháng và năm">
                     </div>
 
                     <!-- Scope Switcher: Lịch của tôi vs Toàn trường -->
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted small fw-semibold d-none d-sm-inline">Phạm vi:</span>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-primary" id="btnScopeMy" onclick="setScope('my')">
-                                <i class="fa-solid fa-user me-1"></i> Của tôi
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Phạm vi hiển thị lịch">
+                            <button type="button" class="btn btn-academic-primary" id="btnScopeMy" onclick="setScope('my')">
+                                <i class="fa-solid fa-user me-1" aria-hidden="true"></i> Của tôi
                             </button>
-                            <button type="button" class="btn btn-outline-primary" id="btnScopeAll" onclick="setScope('all')">
-                                <i class="fa-solid fa-school me-1"></i> Toàn trường
+                            <button type="button" class="btn btn-academic-outline" id="btnScopeAll" onclick="setScope('all')">
+                                <i class="fa-solid fa-school me-1" aria-hidden="true"></i> Toàn trường
                             </button>
                         </div>
                     </div>
@@ -355,27 +353,28 @@
                 <!-- Calendar Legend / Ghi chú màu -->
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 text-muted small px-1">
                     <div class="d-flex align-items-center gap-3">
-                        <span><span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #f59e0b;"></span> Ca Sáng (07:30 - 11:30)</span>
-                        <span><span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: #6366f1;"></span> Ca Chiều (13:00 - 17:00)</span>
-                        <span class="text-danger"><i class="fa-regular fa-calendar-xmark me-1"></i> Chủ Nhật (Nghỉ)</span>
+                        <span><span class="d-inline-block rounded-1 me-1" style="width: 12px; height: 12px; background: #d97706;" aria-hidden="true"></span> Ca Sáng (07:30 - 11:30)</span>
+                        <span><span class="d-inline-block rounded-1 me-1" style="width: 12px; height: 12px; background: #3b82f6;" aria-hidden="true"></span> Ca Chiều (13:00 - 17:00)</span>
+                        <span class="text-danger"><i class="fa-regular fa-calendar-xmark me-1" aria-hidden="true"></i> Chủ Nhật (Nghỉ)</span>
                     </div>
-                    <div class="text-secondary fst-italic" style="font-size: 0.75rem;">
-                        <i class="fa-regular fa-hand-pointer me-1"></i> Bấm vào ngày để xem chi tiết
+                    <div class="text-secondary fst-italic" style="font-size: 0.78rem;">
+                        <i class="fa-regular fa-hand-pointer me-1" aria-hidden="true"></i> Nhấp chuột vào ngày để xem chi tiết
                     </div>
                 </div>
 
                 <!-- Calendar Matrix Table -->
                 <div class="table-responsive">
-                    <table class="table calendar-table">
+                    <table class="calendar-table" aria-label="Ma trận lịch giảng dạy tháng">
+                        <caption class="visually-hidden">Lịch giảng dạy trong tháng theo tuần và ngày</caption>
                         <thead>
                             <tr>
-                                <th>Thứ 2</th>
-                                <th>Thứ 3</th>
-                                <th>Thứ 4</th>
-                                <th>Thứ 5</th>
-                                <th>Thứ 6</th>
-                                <th>Thứ 7</th>
-                                <th class="sunday-col">Chủ Nhật</th>
+                                <th scope="col">Thứ 2</th>
+                                <th scope="col">Thứ 3</th>
+                                <th scope="col">Thứ 4</th>
+                                <th scope="col">Thứ 5</th>
+                                <th scope="col">Thứ 6</th>
+                                <th scope="col">Thứ 7</th>
+                                <th scope="col" class="sunday-col">Chủ Nhật</th>
                             </tr>
                         </thead>
                         <tbody id="calendarGridBody">
@@ -383,20 +382,20 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- Cột Phải (4 phần): Side Panel Chi tiết Ngày được chọn (Không dùng popup) -->
+        <!-- Cột Phải (4 phần): Side Panel Chi tiết Ngày được chọn -->
         <div class="col-lg-4">
-            <div class="side-panel">
+            <aside class="side-panel" aria-labelledby="selectedDateTitle">
                 <div class="side-panel-header d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem;">CHI TIẾT LỊCH DẠY</div>
-                        <h6 class="fw-bold text-primary mb-0" id="selectedDateTitle">
+                        <div class="text-uppercase fw-bold text-muted" style="font-size: 0.72rem; letter-spacing: 0.05em;">HỒ SƠ BUỔI DẠY</div>
+                        <h2 class="h6 fw-bold text-primary mb-0" id="selectedDateTitle">
                             Thứ 2, ngày 05/10/2026
-                        </h6>
+                        </h2>
                     </div>
-                    <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 fw-bold" id="selectedDateBadge">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold" id="selectedDateBadge">
                         0 ca dạy
                     </span>
                 </div>
@@ -404,68 +403,67 @@
                 <div class="side-panel-body" id="sidePanelContent">
                     <!-- Session Cards rendered dynamically -->
                 </div>
-            </div>
+            </aside>
         </div>
     </div>
 
-    <!-- 4. Collapsible Section: Bảng Quản lý Tiến độ Lớp - Môn (Thu gọn mặc định) -->
-    <div class="card card-custom p-4 mb-4">
+    <!-- Bảng Quản lý Tiến độ Lớp - Môn (Xuất Sổ tay Word) -->
+    <section class="card-academic p-4 mb-4" aria-labelledby="subject-list-heading">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
-                <h5 class="fw-bold text-dark mb-0">
-                    <i class="fa-solid fa-table-list text-primary me-2"></i>Danh sách Lớp & Môn học (Xuất Sổ tay Word)
-                </h5>
-                <p class="text-muted small mb-0">Xem tiến độ từng học phần và tải về Sổ tay giảng dạy file .docx</p>
+                <h2 id="subject-list-heading" class="h5 fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-list-ol text-primary me-2" aria-hidden="true"></i>Danh mục Học phần & Sổ tay Giáo án
+                </h2>
+                <p class="text-muted small mb-0">Quản lý nội dung từng buổi học, đồng bộ lịch và tải về Sổ tay giảng dạy định dạng Word (.docx)</p>
             </div>
             
             <div class="d-flex align-items-center gap-2">
-                <!-- Search -->
-                <div class="position-relative" style="min-width: 220px;">
-                    <input type="text" id="tableSearch" class="form-control form-control-sm ps-4 rounded-pill" placeholder="Lọc theo lớp hoặc môn...">
-                    <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-2 text-muted small"></i>
+                <div class="position-relative" style="min-width: 240px;">
+                    <input type="text" id="tableSearch" class="form-control form-control-sm ps-4" placeholder="Lọc theo lớp hoặc môn học..." aria-label="Tìm kiếm theo tên lớp hoặc tên môn học">
+                    <i class="fa-solid fa-magnifying-glass position-absolute top-50 start-0 translate-middle-y ms-2 text-muted small" aria-hidden="true"></i>
                 </div>
             </div>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle border mb-0" id="scheduleTable">
-                <thead class="table-light">
+            <table class="table-academic border mb-0" id="scheduleTable">
+                <thead>
                     <tr>
-                        <th>Lớp học</th>
-                        <th>Môn học</th>
-                        <th>Mã môn</th>
-                        <th class="text-center">Số buổi</th>
-                        <th class="text-center">Thao tác</th>
+                        <th scope="col" style="width: 200px;">Lớp sinh hoạt</th>
+                        <th scope="col">Tên Học phần</th>
+                        <th scope="col" style="width: 140px;">Mã môn</th>
+                        <th scope="col" class="text-center" style="width: 110px;">Quy mô</th>
+                        <th scope="col" class="text-center" style="width: 230px;">Thao tác chuyên vụ</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($pairs as $p)
                         <tr>
                             <td>
-                                <span class="fw-bold text-primary"><i class="fa-solid fa-users me-1 text-secondary"></i> {{ $p->class?->name }}</span>
+                                <span class="fw-bold text-dark"><i class="fa-solid fa-users me-1 text-secondary" aria-hidden="true"></i>{{ $p->class?->name }}</span>
                             </td>
                             <td>
                                 <span class="fw-semibold text-dark">{{ $p->subject?->name }}</span>
                             </td>
                             <td>
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">
+                                <span class="badge bg-light text-secondary border px-2 py-1 font-monospace">
                                     {{ $p->subject?->code }}
                                 </span>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-info-subtle text-info-emphasis px-2 py-1 fw-bold">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
                                     {{ $p->total_schedules }} buổi
                                 </span>
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
                                     <a href="{{ route('schedules.preview', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
-                                       class="btn btn-outline-primary" title="Xem danh sách chi tiết các buổi và sửa inline">
-                                        <i class="fa-solid fa-pen-to-square me-1"></i> Xem chi tiết
+                                       class="btn btn-outline-primary" title="Xem danh sách chi tiết các buổi và sửa inline" aria-label="Xem chi tiết lớp {{ $p->class?->name }}">
+                                        <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i> Chi tiết
                                     </a>
                                     <a href="{{ route('schedules.export_word', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
-                                       class="btn btn-outline-success" title="Xuất file Word sổ tay giáo án">
-                                        <i class="fa-solid fa-file-word me-1"></i> Xuất Word
+                                       class="btn btn-outline-success" title="Xuất file Word sổ tay giáo án" aria-label="Xuất Word lớp {{ $p->class?->name }}">
+                                        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Word
                                     </a>
                                 </div>
                             </td>
@@ -473,27 +471,27 @@
                     @empty
                         <tr>
                             <td colspan="5" class="text-center py-4 text-muted">
-                                Chưa có lớp nào được phân công cho Giảng viên này.
+                                <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i> Chưa có lớp nào được phân công cho Giảng viên này.
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 </div>
 
 <!-- ======================= MODALS ======================= -->
 
 <!-- Modal 1: Thêm Môn học & Mô-đun Buổi học -->
-<div class="modal fade" id="modalAddSubject" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalAddSubject" tabindex="-1" aria-labelledby="modalAddSubjectTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 14px;">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold text-dark">
-                    <i class="fa-solid fa-folder-plus text-primary me-2"></i>Thêm Môn học & Mô-đun Bài giảng
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow" style="border-radius: 8px;">
+            <div class="modal-header bg-light border-bottom">
+                <h2 class="modal-title h5 fw-bold text-dark mb-0" id="modalAddSubjectTitle">
+                    <i class="fa-solid fa-folder-plus text-primary me-2" aria-hidden="true"></i>Thêm Môn học & Mô-đun Bài giảng
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form action="{{ route('schedules.subjects.store_custom') }}" method="POST">
                 @csrf
@@ -510,15 +508,15 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
-                        <h6 class="fw-bold mb-0 text-secondary">
-                            <i class="fa-solid fa-list-ol me-1"></i>Danh sách Mô-đun từng buổi:
-                        </h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addModuleRow()">
-                            <i class="fa-solid fa-plus me-1"></i> Thêm buổi
+                        <h3 class="h6 fw-bold mb-0 text-secondary">
+                            <i class="fa-solid fa-list-ol me-1" aria-hidden="true"></i>Danh sách Mô-đun từng buổi:
+                        </h3>
+                        <button type="button" class="btn btn-sm btn-academic-outline" onclick="addModuleRow()">
+                            <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Thêm buổi
                         </button>
                     </div>
 
-                    <div class="table-responsive border rounded-3 p-2 bg-light">
+                    <div class="table-responsive border rounded-2 p-2 bg-light">
                         <table class="table table-sm table-borderless align-middle mb-0" id="moduleTable">
                             <thead>
                                 <tr class="text-muted small">
@@ -541,9 +539,9 @@
                         </table>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-0">
+                <div class="modal-footer bg-light border-top">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
-                    <button type="submit" class="btn btn-primary btn-sm px-4 fw-bold">Lưu Môn học</button>
+                    <button type="submit" class="btn btn-academic-primary btn-sm px-4 fw-bold">Lưu Môn học</button>
                 </div>
             </form>
         </div>
@@ -551,14 +549,14 @@
 </div>
 
 <!-- Modal 2: Lập Kế hoạch Giảng dạy Cá nhân -->
-<div class="modal fade" id="modalGeneratePlan" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalGeneratePlan" tabindex="-1" aria-labelledby="modalGeneratePlanTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 14px;">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold text-dark">
-                    <i class="fa-solid fa-calendar-plus text-success me-2"></i>Lập Kế hoạch Giảng dạy Cá nhân
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow" style="border-radius: 8px;">
+            <div class="modal-header bg-light border-bottom">
+                <h2 class="modal-title h5 fw-bold text-dark mb-0" id="modalGeneratePlanTitle">
+                    <i class="fa-solid fa-calendar-check text-success me-2" aria-hidden="true"></i>Lập Kế hoạch Giảng dạy Cá nhân
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <form action="{{ route('schedules.generate_plan') }}" method="POST">
                 @csrf
@@ -627,7 +625,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer bg-light border-0">
+                <div class="modal-footer bg-light border-top">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
                     <button type="submit" class="btn btn-success btn-sm px-4 fw-bold">Tạo Kế hoạch</button>
                 </div>
@@ -637,14 +635,14 @@
 </div>
 
 <!-- Modal 3: Import CSV -->
-<div class="modal fade" id="modalImportCSV" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalImportCSV" tabindex="-1" aria-labelledby="modalImportCSVTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 14px;">
-            <div class="modal-header bg-light border-0">
-                <h5 class="modal-title fw-bold text-dark">
-                    <i class="fa-solid fa-file-csv text-primary me-2"></i>Import File CSV
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow" style="border-radius: 8px;">
+            <div class="modal-header bg-light border-bottom">
+                <h2 class="modal-title h5 fw-bold text-dark mb-0" id="modalImportCSVTitle">
+                    <i class="fa-solid fa-file-import text-primary me-2" aria-hidden="true"></i>Import Tệp CSV Học vụ
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
             </div>
             <div class="modal-body p-4">
                 <ul class="nav nav-pills mb-3 nav-justified" id="csvTab" role="tablist">
@@ -662,16 +660,16 @@
 
                 <div class="tab-content" id="csvTabContent">
                     <div class="tab-pane fade show active" id="tab-subject">
-                        <p class="text-muted small">Headers: <code>Mã Môn, Tên Môn, Buổi số, Nội dung giảng dạy, Số tiết LT, Số tiết TH</code></p>
+                        <p class="text-muted small">Cấu trúc cột: <code>Mã Môn, Tên Môn, Buổi số, Nội dung giảng dạy, Số tiết LT, Số tiết TH</code></p>
                         <form action="{{ route('schedules.import.subject_contents') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <input class="form-control form-control-sm mb-3" type="file" name="csv_file" accept=".csv,.txt" required>
-                            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Tải lên Môn học</button>
+                            <button type="submit" class="btn btn-academic-primary btn-sm w-100 fw-bold">Tải lên Môn học</button>
                         </form>
                     </div>
 
                     <div class="tab-pane fade" id="tab-schedule">
-                        <p class="text-muted small">Headers: <code>Ngày, Buổi, Tên Lớp, Tên Môn</code></p>
+                        <p class="text-muted small">Cấu trúc cột: <code>Ngày, Buổi, Tên Lớp, Tên Môn</code></p>
                         <form action="{{ route('schedules.import.schedules') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <input class="form-control form-control-sm mb-3" type="file" name="csv_file" accept=".csv,.txt" required>
@@ -683,10 +681,9 @@
         </div>
     </div>
 </div>
+@endsection
 
-<!-- ======================= JAVASCRIPT ======================= -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+@push('scripts')
 <script>
     // Dữ liệu sự kiện được truyền từ Laravel Controller
     const myEvents = @json($calendarEvents);
@@ -713,12 +710,12 @@
         currentScope = scope;
         if (scope === 'my') {
             activeEvents = myEvents;
-            document.getElementById('btnScopeMy').className = 'btn btn-primary';
-            document.getElementById('btnScopeAll').className = 'btn btn-outline-primary';
+            document.getElementById('btnScopeMy').className = 'btn btn-academic-primary';
+            document.getElementById('btnScopeAll').className = 'btn btn-academic-outline';
         } else {
             activeEvents = allEvents;
-            document.getElementById('btnScopeMy').className = 'btn btn-outline-primary';
-            document.getElementById('btnScopeAll').className = 'btn btn-primary';
+            document.getElementById('btnScopeMy').className = 'btn btn-academic-outline';
+            document.getElementById('btnScopeAll').className = 'btn btn-academic-primary';
         }
         renderCalendar();
         if (selectedDateStr) {
@@ -827,7 +824,7 @@
             td.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="cal-day-number">${d}</span>
-                    ${dayEvents.length > 0 ? `<span class="badge rounded-pill bg-primary" style="font-size: 0.6rem; padding: 2px 5px;">${dayEvents.length}</span>` : ''}
+                    ${dayEvents.length > 0 ? `<span class="badge rounded-1 bg-primary text-white" style="font-size: 0.65rem; padding: 2px 6px;">${dayEvents.length}</span>` : ''}
                 </div>
                 ${badgesHtml}
             `;
@@ -899,9 +896,9 @@
         if (eventsOnDay.length === 0) {
             sideContent.innerHTML = `
                 <div class="text-center py-5 text-muted">
-                    <i class="fa-regular fa-calendar-xmark fa-3x mb-3 text-secondary d-block"></i>
-                    <h6 class="fw-bold text-dark">Không có ca dạy nào</h6>
-                    <p class="small text-muted mb-0">Không có lịch học hoặc lịch giảng dạy trong ngày này.</p>
+                    <i class="fa-regular fa-calendar-xmark fa-3x mb-3 text-secondary d-block" aria-hidden="true"></i>
+                    <h6 class="fw-bold text-dark">Không có ca giảng dạy</h6>
+                    <p class="small text-muted mb-0">Không có lịch học hoặc hoạt động giảng dạy trong ngày này.</p>
                 </div>
             `;
             return;
@@ -913,46 +910,46 @@
         let html = '';
         eventsOnDay.forEach(ev => {
             const isMorning = ev.shift === 'Sáng';
-            const shiftBadgeClass = isMorning ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle';
+            const shiftBadgeClass = isMorning ? 'cal-badge-sang' : 'cal-badge-chieu';
             const shiftTime = isMorning ? '07:30 - 11:30' : '13:00 - 17:00';
             const icon = isMorning ? 'fa-sun' : 'fa-moon';
 
             let syncBadge = '';
             if (ev.sync_status === 'synced') {
-                syncBadge = '<span class="badge bg-success-subtle text-success"><i class="fa-solid fa-check me-1"></i>synced</span>';
+                syncBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-check me-1" aria-hidden="true"></i>synced</span>';
             } else if (ev.sync_status === 'modified') {
-                syncBadge = '<span class="badge bg-info-subtle text-info"><i class="fa-solid fa-pen me-1"></i>modified</span>';
+                syncBadge = '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-pen me-1" aria-hidden="true"></i>modified</span>';
             } else {
-                syncBadge = '<span class="badge bg-warning-subtle text-warning"><i class="fa-regular fa-clock me-1"></i>pending</span>';
+                syncBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"><i class="fa-regular fa-clock me-1" aria-hidden="true"></i>pending</span>';
             }
 
             html += `
                 <div class="session-card">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="badge ${shiftBadgeClass} px-2 py-1 fw-bold">
-                            <i class="fa-solid ${icon} me-1"></i>Ca ${ev.shift} (${shiftTime})
+                            <i class="fa-solid ${icon} me-1" aria-hidden="true"></i>Ca ${ev.shift} (${shiftTime})
                         </span>
                         ${syncBadge}
                     </div>
 
                     <div class="d-flex align-items-baseline gap-2 mb-1">
-                        <span class="badge bg-secondary-subtle text-secondary border">Lớp</span>
+                        <span class="badge bg-light text-dark border">Lớp</span>
                         <h6 class="fw-bold text-dark mb-0">${ev.class_name}</h6>
                     </div>
 
                     <div class="fw-semibold text-primary small mb-1">
-                        <i class="fa-solid fa-book me-1"></i>${ev.subject_name}
-                        <span class="text-secondary fw-normal">• Buổi #${ev.session}</span>
+                        <i class="fa-solid fa-book-open me-1" aria-hidden="true"></i>${ev.subject_name}
+                        <span class="text-secondary fw-normal">&middot; Buổi #${ev.session}</span>
                     </div>
 
-                    ${ev.teacher_name ? `<div class="text-muted small mb-2"><i class="fa-solid fa-user-tie me-1"></i>Giảng viên: <strong>${ev.teacher_name}</strong></div>` : ''}
+                    ${ev.teacher_name ? `<div class="text-muted small mb-2"><i class="fa-solid fa-chalkboard-user me-1" aria-hidden="true"></i>Giảng viên: <strong>${ev.teacher_name}</strong></div>` : ''}
 
-                    <div class="bg-light rounded p-2 small text-secondary mb-3" style="font-size: 0.785rem;">
-                        <strong>Nội dung:</strong> ${ev.content}
+                    <div class="bg-light rounded p-2 small text-secondary mb-3 border border-light-subtle" style="font-size: 0.8rem; line-height: 1.45;">
+                        <strong class="text-dark">Nội dung:</strong> ${ev.content}
                     </div>
 
-                    <a href="/schedules/class/${ev.class_id}/subject/${ev.subject_id}" class="btn btn-sm btn-outline-primary w-100 fw-semibold">
-                        Xem chi tiết & Sửa lịch <i class="fa-solid fa-arrow-right ms-1"></i>
+                    <a href="{{ url('schedules/class') }}/${ev.class_id}/subject/${ev.subject_id}" class="btn btn-sm btn-academic-outline w-100 fw-semibold">
+                        Xem chi tiết & Cập nhật <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i>
                     </a>
                 </div>
             `;
@@ -973,8 +970,8 @@
             <td><input type="number" name="modules[${moduleIndex}][theory_time]" class="form-control form-control-sm text-center" value="2" min="0" required></td>
             <td><input type="number" name="modules[${moduleIndex}][practice_time]" class="form-control form-control-sm text-center" value="3" min="0" required></td>
             <td class="text-center">
-                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()">
-                    <i class="fa-solid fa-trash-can"></i>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()" aria-label="Xóa buổi này">
+                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
                 </button>
             </td>
         `;
@@ -990,5 +987,4 @@
         });
     });
 </script>
-</body>
-</html>
+@endpush

@@ -1,84 +1,92 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Kế hoạch giảng dạy: {{ $class->name }} - {{ $subject->name }}</title>
-    
-    <!-- Bootstrap 5 CSS & FontAwesome -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+@extends('layouts.app')
 
-    <style>
-        body { background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .card-custom { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: none; }
-        .table th { background-color: #f1f4f8; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; color: #495057; }
-        .badge-pending { background-color: #ffc107; color: #212529; }
-        .badge-synced { background-color: #198754; color: #ffffff; }
-        .badge-modified { background-color: #0dcaf0; color: #212529; }
-        .table-input { min-width: 145px; border-radius: 6px; }
-        .table-select { min-width: 105px; border-radius: 6px; }
-        .saving-indicator { font-size: 0.75rem; display: none; }
-    </style>
-</head>
-<body>
+@section('title', 'Kế hoạch giảng dạy: ' . $class->name . ' - ' . $subject->name)
+@section('meta_description', 'Xem chi tiết kế hoạch giảng dạy, số tiết lý thuyết, thực hành, đồng bộ Google Calendar và xuất sổ tay giáo án cho lớp ' . $class->name . ', môn ' . $subject->name)
 
-<div class="container-fluid py-4 px-lg-5">
-    <!-- Header & Action Buttons -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1">
-                    <li class="breadcrumb-item"><a href="{{ route('schedules.index') }}" class="text-decoration-none">Trang chủ</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Lịch giảng chi tiết</li>
-                </ol>
-            </nav>
-            <h3 class="fw-bold mb-0 text-dark">
-                <i class="fa-solid fa-chalkboard-user text-primary me-2"></i>
-                Lớp: <span class="text-primary">{{ $class->name }}</span> | Môn: <span class="text-success">{{ $subject->name }}</span> ({{ $subject->code }})
-            </h3>
-        </div>
+@section('header_actions')
+    <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-secondary px-3" aria-label="Quay về bảng điều khiển">
+        <i class="fa-solid fa-arrow-left me-1" aria-hidden="true"></i> Về Dashboard
+    </a>
+    <!-- Nút Đồng bộ Google Calendar -->
+    <button id="btnSyncCalendar" class="btn btn-sm btn-academic-outline px-3 shadow-sm" onclick="syncCalendar()" aria-label="Đồng bộ lịch lên Google Calendar">
+        <i class="fa-brands fa-google text-danger me-1" aria-hidden="true"></i> Đồng bộ Calendar
+    </button>
+    <!-- Nút Xuất Sổ tay Word -->
+    <a href="{{ route('schedules.export_word', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
+       class="btn btn-sm btn-academic-primary px-3 shadow-sm" aria-label="Xuất file Word sổ tay giáo án">
+        <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Sổ tay Word
+    </a>
+@endsection
 
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-            <!-- Nút Đồng bộ Google Calendar -->
-            <button id="btnSyncCalendar" class="btn btn-outline-primary px-3 shadow-sm" onclick="syncCalendar()">
-                <i class="fa-brands fa-google text-danger me-1"></i> Đồng bộ Google Calendar
-            </button>
+@section('content')
+<div class="container-fluid px-lg-5 py-4">
 
-            <!-- Nút Xuất Sổ tay Word -->
-            <a href="{{ route('schedules.export_word', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
-               class="btn btn-primary px-3 shadow-sm">
-                <i class="fa-solid fa-file-word me-1"></i> Xuất Sổ tay Word
-            </a>
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="Đường dẫn phân cấp học vụ" class="mb-2">
+        <ol class="breadcrumb small mb-1">
+            <li class="breadcrumb-item"><a href="{{ route('schedules.index') }}" class="text-decoration-none text-muted">Trang chủ Lịch dạy</a></li>
+            <li class="breadcrumb-item text-muted">Hồ sơ Lớp {{ $class->name }}</li>
+            <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">{{ $subject->code }}</li>
+        </ol>
+    </nav>
+
+    <!-- Page Title & Header Info -->
+    <div class="card-academic p-4 mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-8">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 mb-2 font-monospace">HỌC PHẦN CHUYÊN NGÀNH</span>
+                <h1 class="h3 fw-bold text-dark mb-2">
+                    {{ $subject->name }}
+                </h1>
+                <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
+                    <span><i class="fa-solid fa-users me-1 text-secondary" aria-hidden="true"></i>Lớp học: <strong class="text-dark">{{ $class->name }}</strong></span>
+                    <span>&middot;</span>
+                    <span><i class="fa-solid fa-barcode me-1 text-secondary" aria-hidden="true"></i>Mã học phần: <strong class="text-dark">{{ $subject->code }}</strong></span>
+                    <span>&middot;</span>
+                    <span><i class="fa-solid fa-calendar-check me-1 text-secondary" aria-hidden="true"></i>Tổng quy mô: <strong class="text-dark">{{ $schedules->count() }} buổi học</strong></span>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="bg-light p-3 rounded-2 border text-start d-inline-block">
+                    <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Quy định giảng dạy</div>
+                    <div class="small text-dark mt-1">
+                        <div>&bull; Ca sáng: <strong>07:30 - 11:30</strong> (5 tiết)</div>
+                        <div>&bull; Ca chiều: <strong>13:00 - 17:00</strong> (5 tiết)</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Main Content Table Card -->
-    <div class="card card-custom p-4 bg-white">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0 fw-bold text-secondary">
-                <i class="fa-solid fa-list-check me-2"></i>Chi tiết từng buổi học & Đồng bộ
-            </h5>
-            <span class="text-muted small">
-                Tổng số buổi: <strong>{{ $schedules->count() }}</strong>
-            </span>
+    <div class="card-academic p-4 bg-white">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+                <h2 class="h5 mb-0 fw-bold text-dark">
+                    <i class="fa-solid fa-book-open-reader text-primary me-2" aria-hidden="true"></i>Chi tiết Tiến độ Giáo án & Lịch học
+                </h2>
+                <p class="text-muted small mb-0">Chỉnh sửa ngày và ca dạy trực tiếp; dữ liệu sẽ được lưu tự động trên hệ thống</p>
+            </div>
+            <div class="text-muted small mt-2 mt-md-0">
+                <span class="badge bg-light text-dark border">
+                    Tổng cộng: <strong>{{ $schedules->count() }} buổi</strong>
+                </span>
+            </div>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle border">
+            <table class="table-academic border" aria-label="Bảng chi tiết các buổi học của học phần">
+                <caption class="visually-hidden">Danh sách các buổi học chi tiết, ngày dạy, ca học và nội dung giáo án</caption>
                 <thead>
                     <tr class="text-center align-middle">
-                        <th style="width: 70px;">Buổi</th>
-                        <th style="width: 170px;">Ngày dạy</th>
-                        <th style="width: 130px;">Ca dạy</th>
-                        <th>Nội dung giảng dạy</th>
-                        <th style="width: 80px;">Số tiết LT</th>
-                        <th style="width: 80px;">Số tiết TH</th>
-                        <th style="width: 140px;">Trạng thái</th>
-                        <th style="width: 100px;">Thao tác</th>
+                        <th scope="col" style="width: 75px;">Buổi</th>
+                        <th scope="col" style="width: 175px;">Ngày giảng dạy</th>
+                        <th scope="col" style="width: 135px;">Ca học</th>
+                        <th scope="col" class="text-start">Nội dung bài học & Mục tiêu</th>
+                        <th scope="col" style="width: 90px;">Tiết LT</th>
+                        <th scope="col" style="width: 90px;">Tiết TH</th>
+                        <th scope="col" style="width: 140px;">Đồng bộ Calendar</th>
+                        <th scope="col" style="width: 90px;">Lưu</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,68 +95,71 @@
                             $content = $item->subjectContent;
                         @endphp
                         <tr id="row-{{ $item->id }}">
-                            <td class="text-center fw-bold text-secondary">
+                            <td class="text-center fw-bold text-secondary font-monospace">
                                 #{{ $item->session_number }}
                             </td>
 
                             <!-- Input Ngày dạy -->
                             <td>
                                 <input type="date" 
-                                       class="form-control form-control-sm table-input" 
+                                       class="form-control form-control-sm" 
                                        id="date-{{ $item->id }}" 
                                        value="{{ $item->teaching_date ? $item->teaching_date->format('Y-m-d') : '' }}"
-                                       onchange="markRowAsDirty({{ $item->id }})">
+                                       onchange="markRowAsDirty({{ $item->id }})"
+                                       aria-label="Chọn ngày dạy buổi {{ $item->session_number }}">
                             </td>
 
                             <!-- Select Ca dạy -->
                             <td>
-                                <select class="form-select form-select-sm table-select" 
+                                <select class="form-select form-select-sm" 
                                         id="shift-{{ $item->id }}"
-                                        onchange="markRowAsDirty({{ $item->id }})">
-                                    <option value="Sáng" {{ $item->session_shift === 'Sáng' ? 'selected' : '' }}>Sáng</option>
-                                    <option value="Chiều" {{ $item->session_shift === 'Chiều' ? 'selected' : '' }}>Chiều</option>
+                                        onchange="markRowAsDirty({{ $item->id }})"
+                                        aria-label="Chọn ca dạy buổi {{ $item->session_number }}">
+                                    <option value="Sáng" {{ $item->session_shift === 'Sáng' ? 'selected' : '' }}>Ca Sáng</option>
+                                    <option value="Chiều" {{ $item->session_shift === 'Chiều' ? 'selected' : '' }}>Ca Chiều</option>
                                 </select>
                             </td>
 
                             <!-- Nội dung bài học -->
-                            <td>
-                                <div class="text-wrap" style="max-width: 500px;">
+                            <td class="text-start">
+                                <div class="text-wrap" style="max-width: 520px; line-height: 1.5; font-size: 0.88rem;">
                                     {{ $content->content ?? 'Chưa cập nhật nội dung cho buổi này' }}
                                 </div>
                             </td>
 
-                            <td class="text-center">{{ $content->theory_time ?? 0 }}</td>
-                            <td class="text-center">{{ $content->practice_time ?? 0 }}</td>
+                            <td class="text-center font-monospace">{{ $content->theory_time ?? 0 }}</td>
+                            <td class="text-center font-monospace">{{ $content->practice_time ?? 0 }}</td>
 
                             <!-- Trạng thái Đồng bộ -->
                             <td class="text-center" id="status-container-{{ $item->id }}">
                                 @if($item->sync_status === 'synced')
-                                    <span class="badge badge-synced px-2 py-1"><i class="fa-solid fa-check me-1"></i>synced</span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1" aria-hidden="true"></i>synced</span>
                                 @elseif($item->sync_status === 'modified')
-                                    <span class="badge badge-modified px-2 py-1"><i class="fa-solid fa-pen me-1"></i>modified</span>
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="fa-solid fa-pen me-1" aria-hidden="true"></i>modified</span>
                                 @else
-                                    <span class="badge badge-pending px-2 py-1"><i class="fa-regular fa-clock me-1"></i>pending</span>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-regular fa-clock me-1" aria-hidden="true"></i>pending</span>
                                 @endif
                             </td>
 
-                            <!-- Button lưu trực tiếp nếu cần -->
+                            <!-- Button lưu trực tiếp -->
                             <td class="text-center">
                                 <button type="button" 
                                         class="btn btn-sm btn-outline-secondary" 
                                         id="btn-save-{{ $item->id }}"
                                         title="Lưu thay đổi dòng này"
+                                        aria-label="Lưu thay đổi cho buổi {{ $item->session_number }}"
                                         onclick="saveRowData({{ $item->id }})">
-                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
                                 </button>
-                                <div class="saving-indicator text-muted" id="saving-{{ $item->id }}">
-                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                <div class="saving-indicator text-muted" id="saving-{{ $item->id }}" style="display: none;" aria-live="polite">
+                                    <i class="fa-solid fa-spinner fa-spin text-primary" aria-hidden="true"></i>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
                             <td colspan="8" class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Chưa có dữ liệu lịch dạy cho lớp và môn học này.
+                                <i class="fa-solid fa-triangle-exclamation text-warning me-2" aria-hidden="true"></i> Chưa có dữ liệu lịch dạy cho lớp và môn học này.
                             </td>
                         </tr>
                     @endforelse
@@ -157,8 +168,9 @@
         </div>
     </div>
 </div>
+@endsection
 
-<!-- JavaScript AJAX Logic -->
+@push('scripts')
 <script>
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -176,7 +188,7 @@
         btnSave.classList.add('d-none');
         savingIndicator.style.display = 'block';
 
-        fetch(`/schedules/${scheduleId}/update-inline`, {
+        fetch(`{{ url('schedules') }}/${scheduleId}/update-inline`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -196,11 +208,11 @@
             if (data.success) {
                 let badgeHtml = '';
                 if (data.sync_status === 'synced') {
-                    badgeHtml = '<span class="badge badge-synced px-2 py-1"><i class="fa-solid fa-check me-1"></i>synced</span>';
+                    badgeHtml = '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-solid fa-check me-1" aria-hidden="true"></i>synced</span>';
                 } else if (data.sync_status === 'modified') {
-                    badgeHtml = '<span class="badge badge-modified px-2 py-1"><i class="fa-solid fa-pen me-1"></i>modified</span>';
+                    badgeHtml = '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1"><i class="fa-solid fa-pen me-1" aria-hidden="true"></i>modified</span>';
                 } else {
-                    badgeHtml = '<span class="badge badge-pending px-2 py-1"><i class="fa-regular fa-clock me-1"></i>pending</span>';
+                    badgeHtml = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fa-regular fa-clock me-1" aria-hidden="true"></i>pending</span>';
                 }
                 statusContainer.innerHTML = badgeHtml;
 
@@ -228,7 +240,7 @@
         const originalHtml = btnSync.innerHTML;
 
         btnSync.disabled = true;
-        btnSync.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang đồng bộ...';
+        btnSync.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1" aria-hidden="true"></i> Đang đồng bộ...';
 
         fetch(`{{ route('schedules.sync_calendar', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}`, {
             method: 'POST',
@@ -263,7 +275,4 @@
         });
     }
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+@endpush
