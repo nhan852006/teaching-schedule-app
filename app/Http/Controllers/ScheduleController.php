@@ -431,9 +431,15 @@ class ScheduleController extends Controller
                 $subjectCode  = $this->getFlexibleValue($item, ['Mã Môn', 'Mã môn', 'Ma Mon', 'code', 'subject_code', 'Mã HP', 'Mã học phần']);
                 $subjectName  = $this->getFlexibleValue($item, ['Tên Môn', 'Tên môn', 'Môn', 'Môn học', 'Ten Mon', 'subject', 'subject_name']);
                 $rawDate      = $this->getFlexibleValue($item, ['Ngày', 'Ngày học', 'Ngày (YYYY-MM-DD)', 'date', 'teaching_date']);
-                $rawShift     = $this->getFlexibleValue($item, ['Buổi', 'Ca', 'Ca học', 'Buổi học', 'Buổi (Sáng/Chiều)', 'shift', 'session_shift'], 'Sáng');
+                $rawShift     = $this->getFlexibleValue($item, ['Buổi', 'Ca', 'Ca học', 'Buổi học', 'Buổi (Sáng/Chiều)', 'shift', 'session_shift'], '0');
 
-                $shift = (stripos($rawShift, 'chiều') !== false || stripos($rawShift, 'chieu') !== false || strtoupper(trim($rawShift)) === 'C') ? 'Chiều' : 'Sáng';
+                $cleanShift = trim((string)$rawShift);
+                if ($cleanShift === '1' || stripos($cleanShift, 'chiều') !== false || stripos($cleanShift, 'chieu') !== false || strtoupper($cleanShift) === 'C') {
+                    $shift = 'Chiều';
+                } else {
+                    $shift = 'Sáng'; // 0, Sáng, sang, S, v.v.
+                }
+
                 $teachingDate = $this->parseFlexibleDate($rawDate);
 
                 $targetSubject = $subjectCode ?: $subjectName;

@@ -669,7 +669,7 @@
                     </div>
 
                     <div class="tab-pane fade" id="tab-schedule">
-                        <p class="text-muted small">Cấu trúc cột: <code>Ngày, Buổi, Tên Lớp, Mã Môn</code> <em>(hoặc <code>Tên Môn</code>)</em></p>
+                        <p class="text-muted small">Cấu trúc cột: <code>Ngày, Buổi, Tên Lớp, Mã Môn</code> <em>(Buổi: <b>0</b> = Sáng, <b>1</b> = Chiều hoặc chữ Sáng/Chiều; Môn: Mã Môn hoặc Tên Môn)</em></p>
                         <form action="{{ route('schedules.import.schedules') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <input class="form-control form-control-sm mb-3" type="file" name="csv_file" accept=".csv,.txt" required>
