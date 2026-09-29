@@ -259,14 +259,19 @@ class LessonPlanWordService
         $skills = $content?->effective_skills ?? 'Thực hiện chính xác các thao tác kỹ năng.';
         $autonomy = $content?->effective_autonomy ?? 'Có tinh thần trách nhiệm, an toàn lao động.';
 
-        $section->addText('- Kiến thức: ' . $knowledge, ['size' => 10], ['spaceAfter' => 20]);
-        $section->addText('- Kỹ năng: ' . $skills, ['size' => 10], ['spaceAfter' => 20]);
-        $section->addText('- Mức độ tự chủ và trách nhiệm: ' . $autonomy, ['size' => 10], ['spaceAfter' => 40]);
+        $section->addText('- Kiến thức:', ['size' => 10, 'bold' => true], ['spaceAfter' => 10]);
+        $this->addMultilineTextToSection($section, $knowledge, ['size' => 10], ['spaceAfter' => 20]);
+        
+        $section->addText('- Kỹ năng:', ['size' => 10, 'bold' => true], ['spaceAfter' => 10]);
+        $this->addMultilineTextToSection($section, $skills, ['size' => 10], ['spaceAfter' => 20]);
+        
+        $section->addText('- Mức độ tự chủ và trách nhiệm:', ['size' => 10, 'bold' => true], ['spaceAfter' => 10]);
+        $this->addMultilineTextToSection($section, $autonomy, ['size' => 10], ['spaceAfter' => 40]);
 
         // ĐỒ DÙNG VÀ TRANG THIẾT BỊ
         $equipment = $content?->effective_equipment ?? 'Phòng máy tính, máy chiếu, bảng, viết, Internet.';
         $section->addText('ĐỒ DÙNG VÀ TRANG THIẾT BỊ DẠY HỌC:', ['size' => 10.5, 'bold' => true], ['spaceAfter' => 20]);
-        $section->addText($equipment, ['size' => 10], ['spaceAfter' => 40]);
+        $this->addMultilineTextToSection($section, $equipment, ['size' => 10], ['spaceAfter' => 40]);
 
         // HÌNH THỨC TỔ CHỨC DẠY HỌC (chỉ cho Mẫu 9b, 9c)
         if ($type !== 'theory') {
@@ -304,11 +309,18 @@ class LessonPlanWordService
 
         foreach ($activities as $act) {
             $r = $tAct->addRow();
-            $r->addCell(500, ['valign' => 'center'])->addText($act['tt'], ['size' => 9.5], ['alignment' => Jc::CENTER]);
-            $r->addCell(2500, ['valign' => 'center'])->addText($act['noi_dung'], ['size' => 9.5, 'bold' => $act['bold'] ?? false]);
-            $r->addCell(2500, ['valign' => 'center'])->addText($act['gv'], ['size' => 9]);
-            $r->addCell(2500, ['valign' => 'center'])->addText($act['hs'], ['size' => 9]);
-            $r->addCell(1000, ['valign' => 'center'])->addText($act['time'], ['size' => 9], ['alignment' => Jc::CENTER]);
+            $r->addCell(500, ['valign' => 'top'])->addText($act['tt'], ['size' => 9.5, 'bold' => true], ['alignment' => Jc::CENTER]);
+            
+            $cNoiDung = $r->addCell(2500, ['valign' => 'top']);
+            $this->addMultilineTextToCell($cNoiDung, $act['noi_dung'], ['size' => 9.5, 'bold' => $act['bold'] ?? false]);
+
+            $cGv = $r->addCell(2500, ['valign' => 'top']);
+            $this->addMultilineTextToCell($cGv, $act['gv'], ['size' => 9]);
+
+            $cHs = $r->addCell(2500, ['valign' => 'top']);
+            $this->addMultilineTextToCell($cHs, $act['hs'], ['size' => 9]);
+
+            $r->addCell(1000, ['valign' => 'top'])->addText($act['time'], ['size' => 9], ['alignment' => Jc::CENTER]);
         }
 
         // TÀI LIỆU THAM KHẢO (Đặc thù Mẫu 9a)
@@ -324,30 +336,63 @@ class LessonPlanWordService
         $section->addText('III. RÚT KINH NGHIỆM TỔ CHỨC THỰC HIỆN:', ['size' => 10.5, 'bold' => true], ['spaceAfter' => 20]);
         $section->addText($expNote, ['size' => 10, 'italic' => true], ['spaceAfter' => 60]);
 
-        // BẢNG CHỮ KÝ
+        // BẢNG CHỮ KÝ (Khớp đúng mẫu: TRƯỞNG KHOA - THÁI QUỐC THẮNG | GIÁO VIÊN - HOÀNG VĂN NHÂN)
         $tSign = $section->addTable(['alignment' => JcTable::CENTER, 'cellMargin' => 40]);
         $rDate = $tSign->addRow();
         $rDate->addCell(4500);
         $cDate = $rDate->addCell(4500);
-        $cDate->addText("Đồng Nai, ngày … tháng … năm …", ['size' => 10, 'italic' => true], ['alignment' => Jc::CENTER]);
+        $dateSignature = $schedule->teaching_date 
+            ? Carbon::parse($schedule->teaching_date)->format('\N\gà\y d \t\h\á\n\g m \n\ă\m Y.')
+            : 'Ngày … tháng … năm 2026.';
+        $cDate->addText($dateSignature, ['size' => 10, 'italic' => true], ['alignment' => Jc::CENTER]);
 
         $rSignTitle = $tSign->addRow();
         $cK = $rSignTitle->addCell(4500);
-        $cK->addText("KHOA / TỔ BỘ MÔN", ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
-        $cK->addText("(Ký ghi rõ họ tên)", ['size' => 9, 'italic' => true], ['alignment' => Jc::CENTER]);
+        $cK->addText("TRƯỞNG KHOA", ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
+        $cK->addText("(Ký duyệt)", ['size' => 9, 'italic' => true], ['alignment' => Jc::CENTER]);
 
         $cGv = $rSignTitle->addCell(4500);
-        $cGv->addText("GIÁO VIÊN / GIẢNG VIÊN", ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
-        $cGv->addText("(Ký ghi rõ họ tên)", ['size' => 9, 'italic' => true], ['alignment' => Jc::CENTER]);
+        $cGv->addText("Chữ ký giáo viên", ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
 
         $rSpace = $tSign->addRow();
         $rSpace->addCell(4500)->addTextBreak(3);
         $rSpace->addCell(4500)->addTextBreak(3);
 
         $rName = $tSign->addRow();
-        $rName->addCell(4500);
-        $cName = $rName->addCell(4500);
-        $cName->addText($teacherName, ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
+        $cDeanName = $rName->addCell(4500);
+        $cDeanName->addText('THÁI QUỐC THẮNG', ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
+        $cTeacherName = $rName->addCell(4500);
+        $cTeacherName->addText(mb_strtoupper($teacherName, 'UTF-8'), ['size' => 10.5, 'bold' => true], ['alignment' => Jc::CENTER]);
+    }
+
+    /**
+     * Helper thêm văn bản nhiều dòng vào ô bảng
+     */
+    protected function addMultilineTextToCell($cell, string $text, array $fontStyle = [], array $paraStyle = []): void
+    {
+        $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $text));
+        foreach ($lines as $idx => $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                $cell->addText($trimmed, $fontStyle, array_merge(['spaceAfter' => 20], $paraStyle));
+            } elseif ($idx === 0) {
+                $cell->addText('', $fontStyle, $paraStyle);
+            }
+        }
+    }
+
+    /**
+     * Helper thêm văn bản nhiều dòng vào section
+     */
+    protected function addMultilineTextToSection($section, string $text, array $fontStyle = [], array $paraStyle = []): void
+    {
+        $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $text));
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed !== '') {
+                $section->addText($trimmed, $fontStyle, array_merge(['spaceAfter' => 20], $paraStyle));
+            }
+        }
     }
 
     /**
