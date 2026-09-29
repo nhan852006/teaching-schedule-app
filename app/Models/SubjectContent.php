@@ -16,6 +16,7 @@ class SubjectContent extends Model
         'content',
         'theory_time',
         'practice_time',
+        'test_time',
     ];
 
     public function subject(): BelongsTo

@@ -522,8 +522,9 @@
                                 <tr class="text-muted small">
                                     <th style="width: 50px;">Buổi</th>
                                     <th>Nội dung bài học</th>
-                                    <th style="width: 90px;">Tiết LT</th>
-                                    <th style="width: 90px;">Tiết TH</th>
+                                    <th style="width: 75px;">Tiết LT</th>
+                                    <th style="width: 75px;">Tiết TH</th>
+                                    <th style="width: 75px;">Tiết KT</th>
                                     <th style="width: 40px;"></th>
                                 </tr>
                             </thead>
@@ -532,7 +533,8 @@
                                     <td class="text-center fw-bold text-muted">1</td>
                                     <td><input type="text" name="modules[0][content]" class="form-control form-control-sm" placeholder="Nội dung bài giảng..." required></td>
                                     <td><input type="number" name="modules[0][theory_time]" class="form-control form-control-sm text-center" value="2" min="0" required></td>
-                                    <td><input type="number" name="modules[0][practice_time]" class="form-control form-control-sm text-center" value="3" min="0" required></td>
+                                    <td><input type="number" name="modules[0][practice_time]" class="form-control form-control-sm text-center" value="2" min="0" required></td>
+                                    <td><input type="number" name="modules[0][test_time]" class="form-control form-control-sm text-center" value="0" min="0"></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -660,7 +662,7 @@
 
                 <div class="tab-content" id="csvTabContent">
                     <div class="tab-pane fade show active" id="tab-subject">
-                        <p class="text-muted small">Cấu trúc cột: <code>Mã Môn, Tên Môn, Buổi số, Nội dung giảng dạy, Số tiết LT, Số tiết TH</code></p>
+                        <p class="text-muted small">Cấu trúc cột: <code>Mã Môn, Tên Môn, Buổi số, Nội dung giảng dạy, Số tiết LT, Số tiết TH, Số tiết KT</code> <em>(Số tiết KT có thể để trống hoặc 0)</em></p>
                         <form action="{{ route('schedules.import.subject_contents') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <input class="form-control form-control-sm mb-3" type="file" name="csv_file" accept=".csv,.txt" required>
@@ -1018,8 +1020,14 @@
 
                     ${ev.teacher_name ? `<div class="text-muted small mb-2"><i class="fa-solid fa-chalkboard-user me-1" aria-hidden="true"></i>Giảng viên: <strong>${ev.teacher_name}</strong></div>` : ''}
 
-                    <div class="bg-light rounded p-2 small text-secondary mb-3 border border-light-subtle" style="font-size: 0.8rem; line-height: 1.45;">
+                    <div class="bg-light rounded p-2 small text-secondary mb-2 border border-light-subtle" style="font-size: 0.8rem; line-height: 1.45;">
                         <strong class="text-dark">Nội dung:</strong> ${ev.content}
+                    </div>
+
+                    <div class="d-flex align-items-center gap-1 mb-3 flex-wrap">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.72rem;">LT: ${ev.theory_time}t</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.72rem;">TH: ${ev.practice_time}t</span>
+                        ${ev.test_time > 0 ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size: 0.72rem;"><i class="fa-solid fa-file-pen me-1"></i>KT: ${ev.test_time}t</span>` : ''}
                     </div>
 
                     <div class="d-flex gap-2">
@@ -1047,7 +1055,8 @@
             <td class="text-center fw-bold text-muted">${nextNum}</td>
             <td><input type="text" name="modules[${moduleIndex}][content]" class="form-control form-control-sm" placeholder="Nội dung bài giảng..." required></td>
             <td><input type="number" name="modules[${moduleIndex}][theory_time]" class="form-control form-control-sm text-center" value="2" min="0" required></td>
-            <td><input type="number" name="modules[${moduleIndex}][practice_time]" class="form-control form-control-sm text-center" value="3" min="0" required></td>
+            <td><input type="number" name="modules[${moduleIndex}][practice_time]" class="form-control form-control-sm text-center" value="2" min="0" required></td>
+            <td><input type="number" name="modules[${moduleIndex}][test_time]" class="form-control form-control-sm text-center" value="0" min="0"></td>
             <td class="text-center">
                 <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()" aria-label="Xóa buổi này">
                     <i class="fa-solid fa-trash-can" aria-hidden="true"></i>

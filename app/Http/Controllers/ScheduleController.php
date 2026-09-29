@@ -119,6 +119,7 @@ class ScheduleController extends Controller
                 'content' => $c?->content ?? 'Chưa cập nhật nội dung',
                 'theory_time' => $c?->theory_time ?? 0,
                 'practice_time' => $c?->practice_time ?? 0,
+                'test_time' => $c?->test_time ?? 0,
                 'sync_status' => $s->sync_status,
             ];
         });
@@ -164,6 +165,7 @@ class ScheduleController extends Controller
             'modules.*.content' => 'required|string',
             'modules.*.theory_time' => 'required|numeric|min:0',
             'modules.*.practice_time' => 'required|numeric|min:0',
+            'modules.*.test_time' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -184,6 +186,7 @@ class ScheduleController extends Controller
                     'content' => trim($mod['content']),
                     'theory_time' => (int)$mod['theory_time'],
                     'practice_time' => (int)$mod['practice_time'],
+                    'test_time' => isset($mod['test_time']) ? (int)$mod['test_time'] : 0,
                 ]);
             }
 
@@ -346,6 +349,7 @@ class ScheduleController extends Controller
                 $content       = $this->getFlexibleValue($data, ['Nội dung giảng dạy', 'Nội dung', 'Noi dung', 'content', 'Tên bài giảng', 'Bài học']);
                 $theoryTime    = (int)$this->getFlexibleValue($data, ['Số tiết LT', 'Số tiết lý thuyết', 'LT', 'Ly thuyet', 'theory_time']);
                 $practiceTime  = (int)$this->getFlexibleValue($data, ['Số tiết TH', 'Số tiết thực hành', 'TH', 'Thuc hanh', 'practice_time']);
+                $testTime      = (int)$this->getFlexibleValue($data, ['Số tiết KT', 'Số tiết kiểm tra', 'Tiết KT', 'KT', 'Kiểm tra', 'Kiem tra', 'test_time', 'exam_time'], 0);
 
                 // Nếu không có mã môn nhưng có tên môn, tự sinh mã môn
                 if (!$subjectCode && $subjectName) {
@@ -378,6 +382,7 @@ class ScheduleController extends Controller
                         'content'       => $content,
                         'theory_time'   => $theoryTime,
                         'practice_time' => $practiceTime,
+                        'test_time'     => $testTime,
                     ]
                 );
 
@@ -962,9 +967,11 @@ class ScheduleController extends Controller
             $contentStr   = $contentModel?->content ?? 'Nội dung đang cập nhật';
             $lt           = $contentModel?->theory_time ?? 0;
             $th           = $contentModel?->practice_time ?? 0;
+            $kt           = $contentModel?->test_time ?? 0;
 
             $summary = "{$class->name} - {$subject->name} - Buổi {$schedule->session_number}";
-            $description = "{$contentStr}\nLT: {$lt} - TH: {$th}";
+            $timeInfo = "LT: {$lt} - TH: {$th}" . ($kt > 0 ? " - KT: {$kt}" : "");
+            $description = "{$contentStr}\n{$timeInfo}";
             $date = $schedule->teaching_date->format('Y-m-d');
             $shift = $schedule->session_shift;
 

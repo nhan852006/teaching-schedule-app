@@ -86,10 +86,11 @@
                         <th scope="col" style="width: 175px;">Ngày giảng dạy</th>
                         <th scope="col" style="width: 135px;">Ca học</th>
                         <th scope="col" class="text-start">Nội dung bài học & Mục tiêu</th>
-                        <th scope="col" style="width: 90px;">Tiết LT</th>
-                        <th scope="col" style="width: 90px;">Tiết TH</th>
-                        <th scope="col" style="width: 140px;">Đồng bộ Calendar</th>
-                        <th scope="col" style="width: 110px;">Thao tác</th>
+                        <th scope="col" style="width: 80px;">Tiết LT</th>
+                        <th scope="col" style="width: 80px;">Tiết TH</th>
+                        <th scope="col" style="width: 80px;">Tiết KT</th>
+                        <th scope="col" style="width: 135px;">Đồng bộ Calendar</th>
+                        <th scope="col" style="width: 105px;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -132,6 +133,15 @@
 
                             <td class="text-center font-monospace">{{ $content->theory_time ?? 0 }}</td>
                             <td class="text-center font-monospace">{{ $content->practice_time ?? 0 }}</td>
+                            <td class="text-center font-monospace">
+                                @if(($content->test_time ?? 0) > 0)
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 fw-bold">
+                                        {{ $content->test_time }}
+                                    </span>
+                                @else
+                                    <span class="text-muted">0</span>
+                                @endif
+                            </td>
 
                             <!-- Trạng thái Đồng bộ -->
                             <td class="text-center" id="status-container-{{ $item->id }}">
@@ -170,7 +180,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-4 text-muted">
+                            <td colspan="9" class="text-center py-4 text-muted">
                                 <i class="fa-solid fa-triangle-exclamation text-warning me-2" aria-hidden="true"></i> Chưa có dữ liệu lịch dạy cho lớp và môn học này.
                             </td>
                         </tr>

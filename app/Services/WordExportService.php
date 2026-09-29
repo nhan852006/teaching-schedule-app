@@ -56,6 +56,7 @@ class WordExportService
                 $templateProcessor->setValue("noi_dung#{$i}", htmlspecialchars($content?->content ?? 'Chưa có nội dung', ENT_QUOTES, 'UTF-8'));
                 $templateProcessor->setValue("lt#{$i}", $content?->theory_time ?? 0);
                 $templateProcessor->setValue("th#{$i}", $content?->practice_time ?? 0);
+                $templateProcessor->setValue("kt#{$i}", $content?->test_time ?? 0);
             }
         } else {
             // Không có dữ liệu thì xoá placeholder hàng
@@ -65,6 +66,7 @@ class WordExportService
             $templateProcessor->setValue('noi_dung', '');
             $templateProcessor->setValue('lt', '');
             $templateProcessor->setValue('th', '');
+            $templateProcessor->setValue('kt', '');
         }
 
         // Tạo file tạm trong thư mục storage/app/temp
