@@ -428,28 +428,39 @@ class ScheduleController extends Controller
 
             foreach ($csvData['rows'] as $item) {
                 $className    = $this->getFlexibleValue($item, ['Tên Lớp', 'Tên lớp', 'Lớp', 'Ten Lop', 'class', 'class_name']);
-                $subjectName  = $this->getFlexibleValue($item, ['Tên Môn', 'Tên môn', 'Môn', 'Môn học', 'Mã Môn', 'Ten Mon', 'subject', 'subject_name']);
+                $subjectCode  = $this->getFlexibleValue($item, ['Mã Môn', 'Mã môn', 'Ma Mon', 'code', 'subject_code', 'Mã HP', 'Mã học phần']);
+                $subjectName  = $this->getFlexibleValue($item, ['Tên Môn', 'Tên môn', 'Môn', 'Môn học', 'Ten Mon', 'subject', 'subject_name']);
                 $rawDate      = $this->getFlexibleValue($item, ['Ngày', 'Ngày học', 'Ngày (YYYY-MM-DD)', 'date', 'teaching_date']);
                 $rawShift     = $this->getFlexibleValue($item, ['Buổi', 'Ca', 'Ca học', 'Buổi học', 'Buổi (Sáng/Chiều)', 'shift', 'session_shift'], 'Sáng');
 
                 $shift = (stripos($rawShift, 'chiều') !== false || stripos($rawShift, 'chieu') !== false || strtoupper(trim($rawShift)) === 'C') ? 'Chiều' : 'Sáng';
                 $teachingDate = $this->parseFlexibleDate($rawDate);
 
-                if (!$className || !$subjectName || !$teachingDate) {
+                $targetSubject = $subjectCode ?: $subjectName;
+
+                if (!$className || !$targetSubject || !$teachingDate) {
                     continue;
                 }
 
                 $class = Classes::firstOrCreate(['name' => $className]);
 
-                $subject = Subject::where('name', $subjectName)
-                    ->orWhere('code', $subjectName)
-                    ->first();
+                // Tìm môn học ưu tiên theo Mã Môn, sau đó theo Tên Môn
+                $subject = null;
+                if ($subjectCode) {
+                    $subject = Subject::where('code', $subjectCode)->first();
+                }
+                if (!$subject && $subjectName) {
+                    $subject = Subject::where('name', $subjectName)->first();
+                }
+                if (!$subject) {
+                    $subject = Subject::where('code', $targetSubject)->orWhere('name', $targetSubject)->first();
+                }
 
                 if (!$subject) {
                     $subject = Subject::create([
-                        'user_id' => $currentTeacher->id,
-                        'code' => strtoupper(\Illuminate\Support\Str::slug($subjectName, '')),
-                        'name' => $subjectName,
+                        'user_id'        => $currentTeacher->id,
+                        'code'           => $subjectCode ?: strtoupper(\Illuminate\Support\Str::slug($targetSubject, '')),
+                        'name'           => $subjectName ?: $targetSubject,
                         'total_sessions' => 0
                     ]);
                 }
