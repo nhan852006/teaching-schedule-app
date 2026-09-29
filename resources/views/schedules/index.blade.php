@@ -681,6 +681,80 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Báo Nghỉ & Đôn Lịch Từ Dashboard -->
+<div class="modal fade" id="dashboardPostponeModal" tabindex="-1" aria-labelledby="dashboardPostponeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-warning text-dark border-0 py-3">
+                <h5 class="modal-title fw-bold fs-6" id="dashboardPostponeModalLabel">
+                    <i class="fa-solid fa-clock-rotate-left me-2"></i> Báo Nghỉ & Tự Động Đôn Lịch Giảng Dạy
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formDashboardPostpone" onsubmit="submitDashboardPostpone(event)">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-info-subtle small py-2 px-3 mb-3">
+                        <i class="fa-solid fa-circle-info me-1 text-info-emphasis"></i>
+                        Hệ thống sẽ dời buổi học này sang ngày thay thế và <strong>tự động đôn lại các buổi học tiếp theo</strong> theo đúng tiến trình bài giảng tăng dần theo dòng thời gian.
+                    </div>
+
+                    <input type="hidden" id="dashScheduleId" required>
+
+                    <!-- Thông tin buổi học bị hoãn -->
+                    <div class="p-3 mb-3 bg-light rounded border text-muted small">
+                        <div>&bull; Lớp học: <strong class="text-dark" id="dashClassName">...</strong></div>
+                        <div>&bull; Môn học: <strong class="text-primary" id="dashSubjectName">...</strong></div>
+                        <div>&bull; Buổi học: <strong class="text-dark" id="dashSessionNum">...</strong></div>
+                        <div>&bull; Ngày báo nghỉ: <strong class="text-danger" id="dashOffDate">...</strong></div>
+                        <div>&bull; Ca học: <strong class="text-dark" id="dashOffShift">...</strong></div>
+                    </div>
+
+                    <!-- Ngày thay thế & Ca thay thế -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label for="dashReplacementDate" class="form-label small fw-bold text-dark">
+                                Ngày học thay thế (Dạy bù) <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="dashReplacementDate" required>
+                        </div>
+                        <div class="col-5">
+                            <label for="dashReplacementShift" class="form-label small fw-bold text-dark">
+                                Ca dạy bù <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-sm" id="dashReplacementShift" required>
+                                <option value="Sáng">Ca Sáng</option>
+                                <option value="Chiều">Ca Chiều</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gợi ý chọn nhanh ngày bù -->
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1" style="font-size: 0.78rem;">Gợi ý chọn nhanh ngày bù:</div>
+                        <div class="btn-group btn-group-sm w-100">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickPickDashDate(3)">+3 ngày</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickPickDashDate(7)">+7 ngày</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickPickDashDate(14)">+14 ngày</button>
+                        </div>
+                    </div>
+
+                    <!-- Lý do nghỉ (Tùy chọn) -->
+                    <div class="mb-2">
+                        <label for="dashReason" class="form-label small fw-bold text-dark">Lý do nghỉ (Tùy chọn)</label>
+                        <input type="text" class="form-control form-control-sm" id="dashReason" placeholder="Ví dụ: Bận việc đột xuất, Nghỉ lễ...">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-4 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-sm btn-warning fw-bold px-3 shadow-sm" id="btnSubmitDashPostpone">
+                        <i class="fa-solid fa-check me-1"></i> Xác Nhận Đôn Lịch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -948,9 +1022,14 @@
                         <strong class="text-dark">Nội dung:</strong> ${ev.content}
                     </div>
 
-                    <a href="{{ url('schedules/class') }}/${ev.class_id}/subject/${ev.subject_id}" class="btn btn-sm btn-academic-outline w-100 fw-semibold">
-                        Xem chi tiết & Cập nhật <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i>
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url('schedules/class') }}/${ev.class_id}/subject/${ev.subject_id}" class="btn btn-sm btn-academic-outline flex-grow-1 fw-semibold">
+                            Chi tiết <i class="fa-solid fa-arrow-right ms-1" aria-hidden="true"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-semibold" title="Báo nghỉ buổi này và đôn lịch" onclick="openDashboardPostpone(${ev.id}, '${ev.date}', '${ev.shift}', ${ev.session}, '${ev.class_name}', '${ev.subject_name}')">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> Báo nghỉ
+                        </button>
+                    </div>
                 </div>
             `;
         });
@@ -986,5 +1065,114 @@
             row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none';
         });
     });
+
+    // Quản lý Báo Nghỉ & Đôn Lịch từ Dashboard
+    let dashPostponeModal = null;
+
+    function openDashboardPostpone(scheduleId, date, shift, session, className, subjectName) {
+        const modalEl = document.getElementById('dashboardPostponeModal');
+        if (!dashPostponeModal && modalEl) {
+            dashPostponeModal = new bootstrap.Modal(modalEl);
+        }
+
+        document.getElementById('dashScheduleId').value = scheduleId;
+        document.getElementById('dashClassName').innerText = className;
+        document.getElementById('dashSubjectName').innerText = subjectName;
+        document.getElementById('dashSessionNum').innerText = `Buổi #${session}`;
+        document.getElementById('dashOffDate').innerText = formatVnDate(date);
+        document.getElementById('dashOffShift').innerText = shift;
+        document.getElementById('dashReplacementShift').value = shift;
+
+        // Gợi ý ngày bù (+3 ngày)
+        quickPickDashDate(3, date);
+
+        if (dashPostponeModal) {
+            dashPostponeModal.show();
+        }
+    }
+
+    function quickPickDashDate(daysToAdd, baseDate = null) {
+        let base = baseDate;
+        if (!base) {
+            const rawOffText = document.getElementById('dashOffDate').innerText;
+            // Parse dd/mm/yyyy back to yyyy-mm-dd
+            const parts = rawOffText.split('/');
+            if (parts.length === 3) {
+                base = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            } else {
+                base = new Date().toISOString().slice(0, 10);
+            }
+        }
+        let d = new Date(base);
+        d.setDate(d.getDate() + daysToAdd);
+        if (d.getDay() === 0) {
+            d.setDate(d.getDate() + 1);
+        }
+        document.getElementById('dashReplacementDate').value = d.toISOString().slice(0, 10);
+    }
+
+    function formatVnDate(iso) {
+        if (!iso) return '';
+        const p = iso.split('-');
+        return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+    }
+
+    function submitDashboardPostpone(e) {
+        e.preventDefault();
+
+        const scheduleId = document.getElementById('dashScheduleId').value;
+        const repDate = document.getElementById('dashReplacementDate').value;
+        const repShift = document.getElementById('dashReplacementShift').value;
+        const reason = document.getElementById('dashReason').value;
+
+        if (!scheduleId || !repDate || !repShift) {
+            Swal.fire('Lưu ý', 'Vui lòng chọn ngày học thay thế!', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitDashPostpone');
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang đôn lịch...';
+
+        fetch("{{ route('schedules.postpone_and_shift') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                schedule_id: scheduleId,
+                replacement_date: repDate,
+                replacement_shift: repShift,
+                reason: reason
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+
+            if (data.success) {
+                if (dashPostponeModal) dashPostponeModal.hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đôn lịch thành công!',
+                    text: data.message,
+                    confirmButtonText: 'Tải lại trang'
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Không thể đôn lịch', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+            Swal.fire('Lỗi kết nối', 'Không thể kết nối đến máy chủ.', 'error');
+        });
+    }
 </script>
 @endpush

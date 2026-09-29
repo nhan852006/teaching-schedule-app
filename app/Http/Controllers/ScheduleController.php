@@ -812,6 +812,132 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Báo nghỉ đột xuất & Tự động đôn lịch (Cascade Shift Schedule)
+     */
+    public function postponeAndShift(Request $request): JsonResponse
+    {
+        $request->validate([
+            'schedule_id'       => 'required|exists:schedules,id',
+            'replacement_date'  => 'required|date_format:Y-m-d',
+            'replacement_shift' => 'required|in:Sáng,Chiều',
+            'reason'            => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $offSchedule = Schedule::with(['class', 'subject'])->findOrFail($request->schedule_id);
+            $classId = $offSchedule->class_id;
+            $subjectId = $offSchedule->subject_id;
+            $userId = $offSchedule->user_id;
+
+            $oldDate  = $offSchedule->teaching_date->format('Y-m-d');
+            $oldShift = $offSchedule->session_shift;
+            $newDate  = $request->replacement_date;
+            $newShift = $request->replacement_shift;
+
+            // 1. Kiểm tra ngày bù không được là Chủ Nhật
+            $replacementCarbon = Carbon::parse($newDate);
+            if ($replacementCarbon->isSunday()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Quy định: Không được chọn ngày thay thế vào Chủ Nhật!',
+                ], 422);
+            }
+
+            // 2. Kiểm tra xung đột cho ngày bù (Collision Checking)
+            // 2a. Giảng viên đã dạy lớp khác ca đó ngày đó chưa?
+            if ($userId) {
+                $teacherConflict = Schedule::where('user_id', $userId)
+                    ->where('teaching_date', $newDate)
+                    ->where('session_shift', $newShift)
+                    ->where('id', '!=', $offSchedule->id)
+                    ->with(['class', 'subject'])
+                    ->first();
+
+                if ($teacherConflict) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Trùng lịch Giảng viên vào ngày bù! Thầy/Cô đã có lịch dạy lớp [{$teacherConflict->class?->name}] môn [{$teacherConflict->subject?->name}] vào ca {$newShift} ngày {$newDate}.",
+                    ], 422);
+                }
+            }
+
+            // 2b. Lớp học đó đã học ca đó ngày đó chưa?
+            $classConflict = Schedule::where('class_id', $classId)
+                ->where('teaching_date', $newDate)
+                ->where('session_shift', $newShift)
+                ->where('id', '!=', $offSchedule->id)
+                ->with(['subject'])
+                ->first();
+
+            if ($classConflict) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Trùng lịch Lớp học vào ngày bù! Lớp [{$offSchedule->class?->name}] đã có lịch học môn [{$classConflict->subject?->name}] vào ca {$newShift} ngày {$newDate}.",
+                ], 422);
+            }
+
+            DB::beginTransaction();
+
+            // Cập nhật ngày và ca cho record bị hoãn
+            $offSchedule->teaching_date = $newDate;
+            $offSchedule->session_shift = $newShift;
+            $offSchedule->save();
+
+            // Lấy tất cả schedules của class_id và subject_id này
+            // Sắp xếp lại theo teaching_date ASC, (session_shift = 'Sáng' ? 0 : 1) ASC
+            $allSchedules = Schedule::where('class_id', $classId)
+                ->where('subject_id', $subjectId)
+                ->get()
+                ->sort(function ($a, $b) {
+                    $cmp = strcmp($a->teaching_date->format('Y-m-d'), $b->teaching_date->format('Y-m-d'));
+                    if ($cmp !== 0) return $cmp;
+                    $shiftVal = fn($s) => $s === 'Sáng' ? 0 : 1;
+                    return $shiftVal($a->session_shift) <=> $shiftVal($b->session_shift);
+                })
+                ->values();
+
+            // Gán lại session_number = 1, 2, ..., N theo thứ tự thời gian tăng dần
+            $changedCount = 0;
+            foreach ($allSchedules as $index => $item) {
+                $newSessionNumber = $index + 1;
+                $isDirty = false;
+
+                if ($item->session_number !== $newSessionNumber) {
+                    $item->session_number = $newSessionNumber;
+                    $isDirty = true;
+                }
+
+                if ($isDirty || $item->isDirty()) {
+                    if ($item->sync_status === 'synced') {
+                        $item->sync_status = 'modified';
+                    }
+                    $item->save();
+                    $changedCount++;
+                }
+            }
+
+            DB::commit();
+
+            $dateVnOld = Carbon::parse($oldDate)->format('d/m/Y');
+            $dateVnNew = Carbon::parse($newDate)->format('d/m/Y');
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đã báo nghỉ ca {$oldShift} ngày {$dateVnOld}, dời sang ca {$newShift} ngày {$dateVnNew} và tự động sắp xếp/đôn lại {$allSchedules->count()} buổi học theo đúng tiến trình bài giảng!",
+                'class_id' => $classId,
+                'subject_id' => $subjectId,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error("Lỗi khi đôn lịch: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi đôn lịch: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Feature D: Google Calendar Integration Trigger
      */
     public function syncGoogleCalendar($classId, $subjectId, GoogleCalendarService $calendarService): JsonResponse

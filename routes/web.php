@@ -39,4 +39,7 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
 
     // 10. Xuất Sổ tay giảng dạy ra file Word .docx
     Route::get('/class/{class_id}/subject/{subject_id}/export-word', [ScheduleController::class, 'exportWord'])->name('export_word');
+
+    // 11. Báo nghỉ đột xuất & Tự động đôn lịch
+    Route::post('/postpone-and-shift', [ScheduleController::class, 'postponeAndShift'])->name('postpone_and_shift');
 });

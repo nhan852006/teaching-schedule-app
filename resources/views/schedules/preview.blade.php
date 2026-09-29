@@ -67,8 +67,11 @@
                 </h2>
                 <p class="text-muted small mb-0">Chỉnh sửa ngày và ca dạy trực tiếp; dữ liệu sẽ được lưu tự động trên hệ thống</p>
             </div>
-            <div class="text-muted small mt-2 mt-md-0">
-                <span class="badge bg-light text-dark border">
+            <div class="d-flex align-items-center gap-2 mt-2 mt-md-0">
+                <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="openPostponeModal()">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Báo Nghỉ & Đôn Lịch
+                </button>
+                <span class="badge bg-light text-dark border p-2">
                     Tổng cộng: <strong>{{ $schedules->count() }} buổi</strong>
                 </span>
             </div>
@@ -86,7 +89,7 @@
                         <th scope="col" style="width: 90px;">Tiết LT</th>
                         <th scope="col" style="width: 90px;">Tiết TH</th>
                         <th scope="col" style="width: 140px;">Đồng bộ Calendar</th>
-                        <th scope="col" style="width: 90px;">Lưu</th>
+                        <th scope="col" style="width: 110px;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,17 +144,26 @@
                                 @endif
                             </td>
 
-                            <!-- Button lưu trực tiếp -->
+                            <!-- Button lưu trực tiếp & Báo nghỉ -->
                             <td class="text-center">
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-secondary" 
-                                        id="btn-save-{{ $item->id }}"
-                                        title="Lưu thay đổi dòng này"
-                                        aria-label="Lưu thay đổi cho buổi {{ $item->session_number }}"
-                                        onclick="saveRowData({{ $item->id }})">
-                                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                                </button>
-                                <div class="saving-indicator text-muted" id="saving-{{ $item->id }}" style="display: none;" aria-live="polite">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-secondary" 
+                                            id="btn-save-{{ $item->id }}"
+                                            title="Lưu thay đổi dòng này"
+                                            aria-label="Lưu thay đổi cho buổi {{ $item->session_number }}"
+                                            onclick="saveRowData({{ $item->id }})">
+                                        <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-warning text-dark" 
+                                            title="Báo nghỉ buổi #{{ $item->session_number }} & Tự động đôn lịch"
+                                            aria-label="Báo nghỉ buổi {{ $item->session_number }}"
+                                            onclick="openPostponeModal({{ $item->id }}, '{{ $item->teaching_date ? $item->teaching_date->format('Y-m-d') : '' }}', '{{ $item->session_shift }}', {{ $item->session_number }})">
+                                        <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="saving-indicator text-muted mt-1" id="saving-{{ $item->id }}" style="display: none;" aria-live="polite">
                                     <i class="fa-solid fa-spinner fa-spin text-primary" aria-hidden="true"></i>
                                 </div>
                             </td>
@@ -165,6 +177,93 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Báo Nghỉ & Tự Động Đôn Lịch -->
+<div class="modal fade" id="postponeShiftModal" tabindex="-1" aria-labelledby="postponeShiftModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-warning text-dark border-0 py-3">
+                <h5 class="modal-title fw-bold fs-6" id="postponeShiftModalLabel">
+                    <i class="fa-solid fa-clock-rotate-left me-2"></i> Báo Nghỉ & Tự Động Đôn Lịch Giảng Dạy
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formPostponeShift" onsubmit="submitPostponeShift(event)">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-info-subtle small py-2 px-3 mb-3">
+                        <i class="fa-solid fa-circle-info me-1 text-info-emphasis"></i>
+                        Hệ thống sẽ dời buổi học này sang ngày thay thế, đồng thời <strong>tự động đôn lại toàn bộ các buổi học tiếp theo</strong> theo đúng tiến trình bài giảng tăng dần theo dòng thời gian.
+                    </div>
+
+                    <!-- Chọn Buổi Báo Nghỉ -->
+                    <div class="mb-3">
+                        <label for="modalScheduleId" class="form-label small fw-bold text-dark">
+                            Chọn Buổi học báo nghỉ đột xuất <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select form-select-sm" id="modalScheduleId" required onchange="onSelectOffSchedule(this.value)">
+                            <option value="">-- Chọn buổi nghỉ --</option>
+                            @foreach($schedules as $s)
+                                <option value="{{ $s->id }}" 
+                                        data-date="{{ $s->teaching_date ? $s->teaching_date->format('Y-m-d') : '' }}"
+                                        data-shift="{{ $s->session_shift }}"
+                                        data-number="{{ $s->session_number }}">
+                                    Buổi #{{ $s->session_number }}: Ngày {{ $s->teaching_date ? $s->teaching_date->format('d/m/Y') : 'Chưa có' }} (Ca {{ $s->session_shift }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Thông tin buổi học bị hoãn -->
+                    <div class="p-2 mb-3 bg-light rounded border text-muted small" id="offSessionInfo" style="display: none;">
+                        <div>&bull; Ngày nghỉ: <strong class="text-danger" id="infoOffDate">...</strong></div>
+                        <div>&bull; Ca học: <strong class="text-dark" id="infoOffShift">...</strong></div>
+                    </div>
+
+                    <!-- Ngày thay thế & Ca thay thế -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-7">
+                            <label for="modalReplacementDate" class="form-label small fw-bold text-dark">
+                                Ngày học thay thế (Dạy bù) <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control form-control-sm" id="modalReplacementDate" required>
+                        </div>
+                        <div class="col-5">
+                            <label for="modalReplacementShift" class="form-label small fw-bold text-dark">
+                                Ca dạy bù <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-sm" id="modalReplacementShift" required>
+                                <option value="Sáng">Ca Sáng</option>
+                                <option value="Chiều">Ca Chiều</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gợi ý chọn nhanh ngày bù -->
+                    <div class="mb-3">
+                        <div class="text-muted small mb-1" style="font-size: 0.78rem;">Gợi ý chọn nhanh ngày bù:</div>
+                        <div class="btn-group btn-group-sm w-100">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickPickDate(3)">+3 ngày</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="quickPickDate(7)">+7 ngày</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="quickPickLastDate()">Sau buổi cuối</button>
+                        </div>
+                    </div>
+
+                    <!-- Lý do nghỉ (Tùy chọn) -->
+                    <div class="mb-2">
+                        <label for="modalReason" class="form-label small fw-bold text-dark">Lý do nghỉ (Tùy chọn)</label>
+                        <input type="text" class="form-control form-control-sm" id="modalReason" placeholder="Ví dụ: Bận việc đột xuất, Nghỉ lễ...">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-4 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-sm btn-warning fw-bold px-3 shadow-sm" id="btnSubmitPostpone">
+                        <i class="fa-solid fa-check me-1"></i> Xác Nhận Đôn Lịch
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -272,6 +371,154 @@
             btnSync.disabled = false;
             btnSync.innerHTML = originalHtml;
             Swal.fire('Lỗi', 'Có lỗi xảy ra trong quá trình gọi Google Calendar API.', 'error');
+        });
+    }
+
+    // Quản lý Modal Báo Nghỉ & Tự Động Đôn Lịch
+    let postponeModal = null;
+    const scheduleDates = [
+        @foreach($schedules as $s)
+            @if($s->teaching_date)
+                "{{ $s->teaching_date->format('Y-m-d') }}",
+            @endif
+        @endforeach
+    ];
+
+    function openPostponeModal(scheduleId = null, date = null, shift = null, sessionNumber = null) {
+        const modalEl = document.getElementById('postponeShiftModal');
+        if (!postponeModal && modalEl) {
+            postponeModal = new bootstrap.Modal(modalEl);
+        }
+
+        const selectEl = document.getElementById('modalScheduleId');
+        if (scheduleId) {
+            selectEl.value = scheduleId;
+            onSelectOffSchedule(scheduleId);
+        } else {
+            selectEl.value = '';
+            document.getElementById('offSessionInfo').style.display = 'none';
+            document.getElementById('modalReplacementDate').value = '';
+        }
+
+        if (postponeModal) {
+            postponeModal.show();
+        }
+    }
+
+    function onSelectOffSchedule(scheduleId) {
+        const selectEl = document.getElementById('modalScheduleId');
+        const selectedOpt = selectEl.options[selectEl.selectedIndex];
+        const infoBox = document.getElementById('offSessionInfo');
+
+        if (!scheduleId || !selectedOpt || !selectedOpt.value) {
+            infoBox.style.display = 'none';
+            return;
+        }
+
+        const date = selectedOpt.getAttribute('data-date');
+        const shift = selectedOpt.getAttribute('data-shift');
+
+        document.getElementById('infoOffDate').innerText = date ? formatDateVn(date) : 'Chưa xếp ngày';
+        document.getElementById('infoOffShift').innerText = shift || 'Sáng';
+        document.getElementById('modalReplacementShift').value = shift || 'Sáng';
+        infoBox.style.display = 'block';
+
+        quickPickLastDate();
+    }
+
+    function quickPickDate(daysToAdd) {
+        const selectEl = document.getElementById('modalScheduleId');
+        const selectedOpt = selectEl.options[selectEl.selectedIndex];
+        let baseDateStr = (selectedOpt && selectedOpt.value) ? selectedOpt.getAttribute('data-date') : null;
+        if (!baseDateStr) {
+            baseDateStr = new Date().toISOString().slice(0, 10);
+        }
+        let d = new Date(baseDateStr);
+        d.setDate(d.getDate() + daysToAdd);
+        if (d.getDay() === 0) {
+            d.setDate(d.getDate() + 1);
+        }
+        document.getElementById('modalReplacementDate').value = d.toISOString().slice(0, 10);
+    }
+
+    function quickPickLastDate() {
+        if (scheduleDates.length > 0) {
+            let lastDateStr = scheduleDates[scheduleDates.length - 1];
+            let d = new Date(lastDateStr);
+            d.setDate(d.getDate() + 3);
+            if (d.getDay() === 0) {
+                d.setDate(d.getDate() + 1);
+            }
+            document.getElementById('modalReplacementDate').value = d.toISOString().slice(0, 10);
+        }
+    }
+
+    function formatDateVn(isoDate) {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return isoDate;
+    }
+
+    function submitPostponeShift(e) {
+        e.preventDefault();
+
+        const scheduleId = document.getElementById('modalScheduleId').value;
+        const replacementDate = document.getElementById('modalReplacementDate').value;
+        const replacementShift = document.getElementById('modalReplacementShift').value;
+        const reason = document.getElementById('modalReason').value;
+
+        if (!scheduleId || !replacementDate || !replacementShift) {
+            Swal.fire('Lưu ý', 'Vui lòng chọn buổi học báo nghỉ và ngày dạy bù!', 'warning');
+            return;
+        }
+
+        const btnSubmit = document.getElementById('btnSubmitPostpone');
+        const originalHtml = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang xử lý đôn lịch...';
+
+        fetch("{{ route('schedules.postpone_and_shift') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                schedule_id: scheduleId,
+                replacement_date: replacementDate,
+                replacement_shift: replacementShift,
+                reason: reason
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalHtml;
+
+            if (data.success) {
+                if (postponeModal) {
+                    postponeModal.hide();
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đôn lịch thành công!',
+                    text: data.message,
+                    confirmButtonText: 'Tải lại trang'
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Không thể đôn lịch', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalHtml;
+            Swal.fire('Lỗi kết nối', 'Không thể kết nối đến máy chủ.', 'error');
         });
     }
 </script>
