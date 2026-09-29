@@ -335,6 +335,8 @@ class ScheduleController extends Controller
         }
 
         $rowCount = 0;
+        $processedSubjects = [];
+
         DB::beginTransaction();
         try {
             foreach ($csvData['rows'] as $data) {
@@ -379,15 +381,22 @@ class ScheduleController extends Controller
                     ]
                 );
 
-                $maxSession = SubjectContent::where('subject_id', $subject->id)->max('session_number');
-                $subject->update(['total_sessions' => $maxSession]);
-
+                $processedSubjects[$subject->id] = $subject;
                 $rowCount++;
+            }
+
+            // Cập nhật tổng số buổi cho từng môn học đã import
+            foreach ($processedSubjects as $subId => $subObj) {
+                $maxSession = SubjectContent::where('subject_id', $subId)->max('session_number');
+                $subObj->update(['total_sessions' => $maxSession]);
             }
 
             DB::commit();
 
-            return back()->with('success', "Đã import thành công {$rowCount} buổi nội dung môn học cho {$currentTeacher->name} (định dạng dấu: '{$csvData['delimiter']}').");
+            $subjectCount = count($processedSubjects);
+            $subjectList = collect($processedSubjects)->map(fn($s) => "{$s->name} ({$s->code})")->implode(', ');
+
+            return back()->with('success', "Đã import thành công {$rowCount} buổi học cho {$subjectCount} môn [{$subjectList}] của {$currentTeacher->name} (phân cách: '{$csvData['delimiter']}').");
         } catch (Exception $e) {
             DB::rollBack();
             Log::error("Lỗi khi import môn học CSV: " . $e->getMessage());
