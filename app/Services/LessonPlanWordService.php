@@ -217,53 +217,100 @@ class LessonPlanWordService
         $cleanTeacherName = preg_replace('/^(?:ThS|TS|PGS|GS|Ths|Ts)\.?\s+/iu', '', trim($teacherName));
         $teacherUpper = htmlspecialchars(mb_strtoupper($cleanTeacherName, 'UTF-8'), ENT_XML1, 'UTF-8');
         $headOfDept = 'THÁI QUỐC THẮNG';
-        $className = $class->name;
-
-        // Yêu cầu 1: Phương án A (Ghép chung dòng với ngày)
-        $dateClassStr = htmlspecialchars("{$teachingDateStr}  -  Lớp: {$className}", ENT_XML1, 'UTF-8');
+        $className = htmlspecialchars($class->name, ENT_XML1, 'UTF-8');
+        $sessionNum = (int)$schedule->session_number;
 
         // 2. Thay thế placeholder macros nếu file có dùng macro ${...}
         $macros = [
-            '${lop}'                => htmlspecialchars($className, ENT_XML1, 'UTF-8'),
-            '${ten_lop}'            => htmlspecialchars($className, ENT_XML1, 'UTF-8'),
-            '${ngay_day}'           => htmlspecialchars($teachingDateStr, ENT_XML1, 'UTF-8'),
-            '${ngay_thuc_hien}'     => htmlspecialchars($teachingDateStr, ENT_XML1, 'UTF-8'),
+            '${lop}'                => $className,
+            '${ten_lop}'            => $className,
+            '${ngay_day}'           => $teachingDateStr,
+            '${ngay_thuc_hien}'     => $teachingDateStr,
             '${ngay_ky}'            => $signDay,
             '${thang_ky}'           => $signMonth,
             '${nam_ky}'             => $signYear,
             '${giang_vien}'         => $teacherUpper,
             '${giao_vien}'          => $teacherUpper,
             '${truong_khoa}'        => $headOfDept,
-            '${so_giao_an}'         => sprintf('%02d', $schedule->session_number),
+            '${so_giao_an}'         => sprintf('%02d', $sessionNum),
             '${thoi_gian_thuc_hien}'=> '4 giờ',
         ];
         $docXml = strtr($docXml, $macros);
 
-        // 3. Tự động nhận diện và thay thế trong cấu trúc file mẫu của Thầy:
-        // A. Thay thế ngày thực hiện & Lớp (Phương án A)
-        // Kiểm tra nếu file đã có trường Lớp riêng dạng "Lớp: …"
-        if (preg_match('/Lớp\s*:\s*[…\.]+/ui', $docXml)) {
-            $docXml = preg_replace('/(Lớp\s*:\s*)[…\.]+/ui', '${1}' . htmlspecialchars($className, ENT_XML1, 'UTF-8'), $docXml);
-            $docXml = preg_replace('/…\s*\/\s*…\s*\/\s*20\d\d|…\s*\/\s*…\s*\/\s*\d\d\d\d|…\s*\/\s*…\s*\/\s*20\.\.\./u', htmlspecialchars($teachingDateStr, ENT_XML1, 'UTF-8'), $docXml);
-        } else {
-            // Thay thế .../.../2026 thành "dd/mm/yyyy - Lớp: TênLớp"
-            $docXml = preg_replace('/…\s*\/\s*…\s*\/\s*20\d\d|…\s*\/\s*…\s*\/\s*\d\d\d\d|…\s*\/\s*…\s*\/\s*20\.\.\./u', $dateClassStr, $docXml);
-        }
+        // 3. Tự động nhận diện và thay thế chính xác các phần trong cấu trúc file mẫu:
 
-        // B. Thay thế ngày ký duyệt ở cuối file: "Ngày … tháng … năm 2026." thành ngày trước ngày dạy 1 tuần
-        $signPattern = '/(<w:t[^>]*>N(?:<\/w:t>.*?<w:t[^>]*>)?gày\s*<\/w:t>[\s\S]*?<w:t[^>]*>)…(<\/w:t>[\s\S]*?<w:t[^>]*>\s*tháng\s*<\/w:t>[\s\S]*?<w:t[^>]*>)…(<\/w:t>[\s\S]*?<w:t[^>]*>\s*năm\s*202\s*<\/w:t>[\s\S]*?<w:t[^>]*>)\d(<\/w:t>)/u';
-        $docXml = preg_replace($signPattern, '${1}' . $signDay . '${2}' . $signMonth . '${3}' . substr($signYear, -1) . '${4}', $docXml);
+        // A. Thay thế mục: Thực hiện ngày: ... thành: Thực hiện ngày: dd/mm/yyyy  -  Lớp: TênLớp (Phương án A)
+        $docXml = preg_replace_callback('/<w:p\b[^>]*>.*?<\/w:p>/s', function($match) use ($teachingDateStr, $className) {
+            $pXml = $match[0];
+            $cleanText = strip_tags($pXml);
+            if (mb_stripos($cleanText, 'thực hiện ngày') !== false) {
+                // Trích xuất pPr để giữ nguyên tab stop và lề paragraph
+                preg_match('/<w:pPr\b.*?<\/w:pPr>/s', $pXml, $pPrMatch);
+                $pPr = $pPrMatch[0] ?? '';
+                $newText = "Thực hiện ngày: {$teachingDateStr}  -  Lớp: {$className}";
+                return "<w:p>{$pPr}<w:r><w:tab/></w:r><w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:t xml:space=\"preserve\">{$newText}</w:t></w:r></w:p>";
+            }
+            return $pXml;
+        }, $docXml);
 
-        // Thay thế bổ trợ dạng văn bản liền nếu có
-        $docXml = preg_replace('/Ngày\s*…\s*tháng\s*…\s*năm\s*20\d\d/ui', "Ngày {$signDay} tháng {$signMonth} năm {$signYear}", $docXml);
+        // B. Thay thế mục: GIÁO ÁN SỐ: ... đảm bảo số buổi học khớp chính xác với lịch dạy
+        $docXml = preg_replace_callback('/<w:p\b[^>]*>.*?<\/w:p>/s', function($match) use ($sessionNum) {
+            $pXml = $match[0];
+            $cleanText = strip_tags($pXml);
+            if (mb_stripos($cleanText, 'giáo án số') !== false) {
+                preg_match('/<w:pPr\b.*?<\/w:pPr>/s', $pXml, $pPrMatch);
+                $pPr = $pPrMatch[0] ?? '';
+                $sessStr = sprintf('%02d', $sessionNum);
+                return "<w:p>{$pPr}" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:t>GIÁO ÁN SỐ:</w:t></w:r>" .
+                       "<w:r><w:rPr><w:color w:val=\"000000\"/></w:rPr><w:t xml:space=\"preserve\">  </w:t></w:r>" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/><w:sz w:val=\"30\"/><w:szCs w:val=\"30\"/></w:rPr><w:t>{$sessStr}</w:t></w:r>" .
+                       "<w:r><w:rPr><w:color w:val=\"000000\"/></w:rPr><w:tab/><w:t>Thời gian thực hiện</w:t><w:tab/><w:t>: 4 giờ</w:t></w:r>" .
+                       "</w:p>";
+            }
+            return $pXml;
+        }, $docXml);
 
-        // C. Thay thế tên giáo viên ở phần ký tên
-        $docXml = str_replace(
-            'HOÀNG</w:t></w:r><w:r w:rsidR="00104DCB"><w:rPr><w:b/><w:lang w:val="vi-VN"/></w:rPr><w:t xml:space="preserve"> VĂN NHÂN',
-            $teacherUpper,
-            $docXml
-        );
-        $docXml = str_ireplace('HOÀNG VĂN NHÂN', $teacherUpper, $docXml);
+        // C. Thay thế ngày ký duyệt ở cuối file: TRƯỞNG KHOA [tab] Ngày ... tháng ... năm ...
+        $docXml = preg_replace_callback('/<w:p\b[^>]*>.*?<\/w:p>/s', function($match) use ($signDay, $signMonth, $signYear) {
+            $pXml = $match[0];
+            $cleanText = strip_tags($pXml);
+            if (mb_stripos($cleanText, 'trưởng khoa') !== false && (mb_stripos($cleanText, 'ngày') !== false || mb_stripos($cleanText, 'ngay') !== false)) {
+                preg_match('/<w:pPr\b.*?<\/w:pPr>/s', $pXml, $pPrMatch);
+                $pPr = $pPrMatch[0] ?? '';
+                $signText = "Ngày {$signDay} tháng {$signMonth} năm {$signYear}.";
+                return "<w:p>{$pPr}" .
+                       "<w:r><w:rPr><w:color w:val=\"000000\"/></w:rPr><w:tab/></w:r>" .
+                       "<w:r><w:rPr><w:color w:val=\"000000\"/></w:rPr><w:t>TRƯỞNG KHOA</w:t></w:r>" .
+                       "<w:r><w:rPr><w:color w:val=\"000000\"/></w:rPr><w:tab/></w:r>" .
+                       "<w:r><w:rPr><w:i/><w:color w:val=\"000000\"/></w:rPr><w:t xml:space=\"preserve\">{$signText}</w:t></w:r>" .
+                       "</w:p>";
+            }
+            return $pXml;
+        }, $docXml);
+
+        // D. Thay thế tên giáo viên ở phần ký tên cuối giáo án (Trưởng khoa: THÁI QUỐC THẮNG - Giáo viên: $teacherUpper)
+        $docXml = preg_replace_callback('/<w:p\b[^>]*>.*?<\/w:p>/s', function($match) use ($headOfDept, $teacherUpper) {
+            $pXml = $match[0];
+            $cleanText = strip_tags($pXml);
+            $cleanLower = mb_strtolower($cleanText, 'UTF-8');
+            if (mb_stripos($cleanLower, 'thái quốc thắng') !== false && (
+                mb_stripos($cleanLower, 'hoàng văn nhân') !== false ||
+                substr_count($cleanLower, 'thái quốc thắng') >= 2 ||
+                mb_stripos($cleanLower, 'giáo viên') !== false
+            )) {
+                preg_match('/<w:pPr\b.*?<\/w:pPr>/s', $pXml, $pPrMatch);
+                $pPr = $pPrMatch[0] ?? '';
+                return "<w:p>{$pPr}" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:tab/></w:r>" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:t>{$headOfDept}</w:t></w:r>" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:tab/></w:r>" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:t>{$teacherUpper}</w:t></w:r>" .
+                       "<w:r><w:rPr><w:b/><w:color w:val=\"000000\"/></w:rPr><w:tab/></w:r>" .
+                       "</w:p>";
+            }
+            return $pXml;
+        }, $docXml);
 
         $files['word/document.xml'] = $docXml;
 

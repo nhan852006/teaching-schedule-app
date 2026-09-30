@@ -162,12 +162,18 @@
                                 <!-- Tình trạng File mẫu Word của buổi này -->
                                 <div class="mt-2 pt-1 border-top d-flex align-items-center flex-wrap gap-2" id="template-status-{{ $item->session_number }}">
                                     @if($subject->hasTemplateForSession($item->session_number))
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0" style="font-size: 0.74rem;">
-                                            <i class="fa-solid fa-file-circle-check me-1"></i>Đã có mẫu Word riêng
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-circle-check me-1"></i>Đã có mẫu Word
                                         </span>
+                                        <a href="{{ route('schedules.export_single_lesson_plan', ['schedule_id' => $item->id]) }}" 
+                                           class="btn btn-xs btn-success py-0 px-2 shadow-sm text-white fw-semibold" 
+                                           title="Tải giáo án Word đã tự động điền Lớp và Ngày dạy theo lịch của lớp này" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-word me-1"></i>Tải giáo án lớp này (.docx)
+                                        </a>
                                         <a href="{{ route('schedules.subject.download_template', ['subject_id' => $subject->id, 'session_number' => $item->session_number]) }}" 
-                                           class="btn btn-xs btn-outline-secondary py-0 px-1" title="Tải file mẫu gốc" style="font-size: 0.72rem;">
-                                            <i class="fa-solid fa-download me-1"></i>Mẫu gốc
+                                           class="btn btn-xs btn-outline-secondary py-0 px-1" title="Tải file mẫu gốc chưa điền thông tin" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-download me-1"></i>File gốc
                                         </a>
                                         <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1" 
                                                 onclick="openSingleUploadModal({{ $item->session_number }})" 
