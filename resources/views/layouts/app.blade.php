@@ -266,6 +266,12 @@
                                 <i class="fa-solid fa-book-bookmark me-1 text-secondary"></i> Quản Lý Môn Học
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-3 py-1 rounded fw-semibold {{ request()->routeIs('teachers.*') ? 'active bg-primary-subtle text-primary border border-primary-subtle' : 'text-dark' }}" 
+                               href="{{ route('teachers.index') }}">
+                                <i class="fa-solid fa-chalkboard-user me-1 text-secondary"></i> Quản Lý Giáo Viên
+                            </a>
+                        </li>
                     </ul>
                 </div>
 

@@ -3,10 +3,22 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\TeacherController;
 
 // Trang chủ tự động chuyển đến Dashboard
 Route::get('/', function () {
     return redirect()->route('schedules.index');
+});
+
+// Module Quản lý Giáo viên bộ môn
+Route::prefix('teachers')->name('teachers.')->group(function () {
+    Route::get('/', [TeacherController::class, 'index'])->name('index');
+    Route::post('/', [TeacherController::class, 'store'])->name('store');
+    Route::put('/{id}', [TeacherController::class, 'update'])->name('update');
+    Route::delete('/{id}', [TeacherController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/toggle-status', [TeacherController::class, 'toggleStatus'])->name('toggle_status');
+    Route::get('/{id}/switch', [TeacherController::class, 'switchWorkspace'])->name('switch');
+    Route::post('/{id}/assign-plan', [TeacherController::class, 'assignPlan'])->name('assign_plan');
 });
 
 // Module Quản lý Môn học & Nội dung Buổi học
