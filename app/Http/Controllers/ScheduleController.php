@@ -1158,7 +1158,13 @@ class ScheduleController extends Controller
 
                 $stream = $zip->getStream($filename);
                 if ($stream) {
+                    @chmod($targetDir, 0777);
+                    if (file_exists($destPath)) {
+                        @chmod($destPath, 0666);
+                        @unlink($destPath);
+                    }
                     file_put_contents($destPath, stream_get_contents($stream));
+                    @chmod($destPath, 0666);
                     fclose($stream);
                     $importedCount++;
                     $matchedSessions[] = $sessionNum;
@@ -1202,7 +1208,14 @@ class ScheduleController extends Controller
         $destFilename = 'buoi_' . sprintf('%02d', $sessionNumber) . '.' . $extension;
         $destPath = $targetDir . DIRECTORY_SEPARATOR . $destFilename;
 
+        @chmod($targetDir, 0777);
+        if (file_exists($destPath)) {
+            @chmod($destPath, 0666);
+            @unlink($destPath);
+        }
+
         $file->move($targetDir, $destFilename);
+        @chmod($destPath, 0666);
 
         return response()->json([
             'success' => true,

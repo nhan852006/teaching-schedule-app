@@ -90,10 +90,18 @@ class Subject extends Model
      */
     public function getTemplateDirectory(): string
     {
-        $dir = storage_path("app/lesson_plan_templates/{$this->id}");
+        $base = storage_path('app/lesson_plan_templates');
+        if (!is_dir($base)) {
+            @mkdir($base, 0777, true);
+        }
+        @chmod($base, 0777);
+
+        $dir = $base . DIRECTORY_SEPARATOR . $this->id;
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
         }
+        @chmod($dir, 0777);
+
         return $dir;
     }
 
