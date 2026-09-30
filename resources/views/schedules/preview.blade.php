@@ -16,6 +16,11 @@
        class="btn btn-sm btn-academic-primary px-3 shadow-sm" aria-label="Xuất Kế hoạch giảng dạy Mẫu 08 (.docx)">
         <i class="fa-solid fa-file-word me-1" aria-hidden="true"></i> Xuất Mẫu 08 (.docx)
     </a>
+    <!-- Nút Tải lên Giáo án mẫu (.zip) -->
+    <button type="button" class="btn btn-sm btn-outline-success px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#uploadTemplatesZipModal" aria-label="Tải lên trọn gói giáo án mẫu Word">
+        <i class="fa-solid fa-cloud-arrow-up me-1" aria-hidden="true"></i> Tải Mẫu Word (.zip)
+        <span class="badge bg-success ms-1">{{ $subject->countUploadedTemplates() }}/{{ $subject->total_sessions ?: $schedules->count() }}</span>
+    </button>
     <!-- Nút Xuất Sổ Giáo Án -->
     <a href="{{ route('schedules.export_lesson_plans', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
        class="btn btn-sm btn-academic-outline px-3 shadow-sm" aria-label="Xuất trọn bộ Sổ Giáo Án (.docx)">
@@ -49,6 +54,10 @@
                     <span><i class="fa-solid fa-barcode me-1 text-secondary" aria-hidden="true"></i>Mã học phần: <strong class="text-dark">{{ $subject->code }}</strong></span>
                     <span>&middot;</span>
                     <span><i class="fa-solid fa-calendar-check me-1 text-secondary" aria-hidden="true"></i>Tổng quy mô: <strong class="text-dark">{{ $schedules->count() }} buổi học</strong></span>
+                    <span>&middot;</span>
+                    <a href="{{ route('subjects.show', $subject->id) }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 0.75rem;" title="Xem & Chỉnh sửa nội dung chi tiết bài giảng của môn học">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Quản lý nội dung môn
+                    </a>
                 </div>
                 <div class="mt-2 d-flex align-items-center gap-2">
                     <span class="text-muted small"><i class="fa-solid fa-file-signature me-1 text-secondary"></i>Mẫu giáo án:</span>
@@ -149,6 +158,37 @@
                             <td class="text-start">
                                 <div class="text-wrap" style="max-width: 520px; line-height: 1.5; font-size: 0.88rem;">
                                     {{ $content->content ?? 'Chưa cập nhật nội dung cho buổi này' }}
+                                </div>
+                                <!-- Tình trạng File mẫu Word của buổi này -->
+                                <div class="mt-2 pt-1 border-top d-flex align-items-center flex-wrap gap-2" id="template-status-{{ $item->session_number }}">
+                                    @if($subject->hasTemplateForSession($item->session_number))
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0" style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-circle-check me-1"></i>Đã có mẫu Word riêng
+                                        </span>
+                                        <a href="{{ route('schedules.subject.download_template', ['subject_id' => $subject->id, 'session_number' => $item->session_number]) }}" 
+                                           class="btn btn-xs btn-outline-secondary py-0 px-1" title="Tải file mẫu gốc" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-download me-1"></i>Mẫu gốc
+                                        </a>
+                                        <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1" 
+                                                onclick="openSingleUploadModal({{ $item->session_number }})" 
+                                                title="Tải đè / Cập nhật file mẫu mới" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-arrow-up-from-bracket me-1"></i>Đổi mẫu
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" 
+                                                onclick="deleteSingleTemplate({{ $subject->id }}, {{ $item->session_number }})" 
+                                                title="Xoá file mẫu buổi này" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    @else
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0" style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-lines me-1"></i>Dùng mẫu sinh tự động
+                                        </span>
+                                        <button type="button" class="btn btn-xs btn-outline-success py-0 px-1" 
+                                                onclick="openSingleUploadModal({{ $item->session_number }})" 
+                                                title="Tải lên file mẫu Word riêng cho buổi này" style="font-size: 0.72rem;">
+                                            <i class="fa-solid fa-plus me-1"></i>Thêm mẫu .docx
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
 
@@ -424,6 +464,88 @@
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Đóng</button>
                     <button type="submit" class="btn btn-sm btn-academic-primary px-3 shadow-sm" id="btnSubmitLessonPlan">
                         <i class="fa-solid fa-floppy-disk me-1"></i> Lưu Giáo Án
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tải lên trọn gói Giáo án mẫu (.zip) -->
+<div class="modal fade" id="uploadTemplatesZipModal" tabindex="-1" aria-labelledby="uploadTemplatesZipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-success text-white border-0 py-3">
+                <h5 class="modal-title fw-bold fs-6" id="uploadTemplatesZipModalLabel">
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Tải Lên Gói Giáo Án Mẫu Word (.zip)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('schedules.subject.upload_templates_zip', ['subject_id' => $subject->id]) }}" 
+                  method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="alert alert-success border-success-subtle small py-2 px-3 mb-3">
+                        <div class="fw-bold mb-1"><i class="fa-solid fa-circle-check me-1"></i> Quy tắc tự động ghép nối giáo án:</div>
+                        <ul class="mb-0 ps-3" style="line-height: 1.6;">
+                            <li>Nén toàn bộ các file giáo án của môn học thành 1 file <strong>.zip</strong>.</li>
+                            <li>Tên file Word trong zip đặt theo mẫu: <code>buoi_01.docx</code>, <code>buoi_02.docx</code>, ..., <code>buoi_22.docx</code>.</li>
+                            <li>Hệ thống bảo toàn 100% hình ảnh minh hoạ, bảng biểu, sơ đồ trong file Word gốc của Thầy.</li>
+                            <li>Tự động điền <strong>Thực hiện ngày: dd/mm/yyyy - Lớp: TênLớp</strong> (Phương án A).</li>
+                            <li>Tự động tính ngày ký duyệt <strong>trước ngày dạy 1 tuần</strong> và điền tên Giáo viên phân công.</li>
+                            <li>Khi xuất <strong>Sổ Giáo Án</strong>, hệ thống tự động gộp tất cả các buổi thành <strong>1 file Word duy nhất</strong> kèm Trang Bìa.</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="zip_file" class="form-label small fw-bold text-dark">
+                            Chọn file nén (.zip) chứa 22 file giáo án mẫu <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control form-control-sm" id="zip_file" name="zip_file" accept=".zip" required>
+                        <div class="form-text small text-muted">Dung lượng tối đa 100MB. Các file bên trong có định dạng chuẩn .docx</div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-2 border small text-muted">
+                        <div>&bull; Môn học áp dụng: <strong class="text-dark">{{ $subject->name }}</strong> ({{ $subject->code }})</div>
+                        <div>&bull; Số file mẫu đã có trên hệ thống: <strong class="text-success">{{ $subject->countUploadedTemplates() }}/{{ $subject->total_sessions ?: $schedules->count() }} buổi</strong></div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-4 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-sm btn-success px-3 shadow-sm">
+                        <i class="fa-solid fa-upload me-1"></i> Tải Lên & Khớp Buổi Dạy
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tải lên lẻ 1 file giáo án mẫu (.docx) -->
+<div class="modal fade" id="uploadSingleTemplateModal" tabindex="-1" aria-labelledby="uploadSingleTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-primary text-white border-0 py-2">
+                <h6 class="modal-title fw-bold" id="uploadSingleTemplateModalLabel">
+                    <i class="fa-solid fa-file-arrow-up me-2"></i> File Mẫu Buổi #<span id="singleModalSessionNumber">1</span>
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formSingleTemplate" onsubmit="submitSingleTemplate(event)">
+                <input type="hidden" id="singleSessionInput" value="1">
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <label for="single_template_file" class="form-label small fw-bold text-dark">
+                            Chọn file Word (.docx) <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control form-control-sm" id="single_template_file" accept=".docx,.doc" required>
+                        <div class="form-text small" style="font-size: 0.72rem;">File sẽ được lưu làm khuôn mẫu cho buổi học này.</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2 px-3 border-top">
+                    <button type="button" class="btn btn-xs btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-xs btn-primary px-3 shadow-sm" id="btnSubmitSingleTemplate">
+                        <i class="fa-solid fa-upload me-1"></i> Lưu File Mẫu
                     </button>
                 </div>
             </form>
@@ -813,6 +935,112 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Thành công!',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Lỗi', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ.', 'error');
+                });
+            }
+        });
+    }
+
+    function openSingleUploadModal(sessionNumber) {
+        document.getElementById('singleModalSessionNumber').textContent = sessionNumber;
+        document.getElementById('singleSessionInput').value = sessionNumber;
+        document.getElementById('single_template_file').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('uploadSingleTemplateModal'));
+        modal.show();
+    }
+
+    function submitSingleTemplate(event) {
+        event.preventDefault();
+        const sessionNumber = document.getElementById('singleSessionInput').value;
+        const fileInput = document.getElementById('single_template_file');
+        if (!fileInput.files.length) {
+            Swal.fire('Chú ý', 'Vui lòng chọn 1 file .docx', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('template_file', fileInput.files[0]);
+
+        const subjectId = {{ $subject->id }};
+        const uploadUrl = "{{ url('schedules/subject') }}/" + subjectId + "/session/" + sessionNumber + "/upload-template";
+
+        const btn = document.getElementById('btnSubmitSingleTemplate');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang tải lên...';
+
+        fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-upload me-1"></i> Lưu File Mẫu';
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadSingleTemplateModal'));
+                if (modal) modal.hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Lỗi', data.message || 'Không thể tải lên file mẫu.', 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-upload me-1"></i> Lưu File Mẫu';
+            Swal.fire('Lỗi', 'Không thể kết nối đến máy chủ.', 'error');
+        });
+    }
+
+    function deleteSingleTemplate(subjectId, sessionNumber) {
+        const deleteUrl = "{{ url('schedules/subject') }}/" + subjectId + "/session/" + sessionNumber + "/delete-template";
+
+        Swal.fire({
+            title: 'Xoá file mẫu Buổi #' + sessionNumber + '?',
+            text: 'Buổi học này sẽ quay lại sử dụng mẫu giáo án sinh tự động.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Đồng ý xoá',
+            cancelButtonText: 'Hủy'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(deleteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Đã xoá!',
                             text: data.message,
                             timer: 1500,
                             showConfirmButton: false

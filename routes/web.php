@@ -2,10 +2,26 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\SubjectController;
 
 // Trang chủ tự động chuyển đến Dashboard
 Route::get('/', function () {
     return redirect()->route('schedules.index');
+});
+
+// Module Quản lý Môn học & Nội dung Buổi học
+Route::prefix('subjects')->name('subjects.')->group(function () {
+    Route::get('/', [SubjectController::class, 'index'])->name('index');
+    Route::post('/', [SubjectController::class, 'store'])->name('store');
+    Route::get('/{id}', [SubjectController::class, 'show'])->name('show');
+    Route::put('/{id}', [SubjectController::class, 'update'])->name('update');
+    Route::delete('/{id}', [SubjectController::class, 'destroy'])->name('destroy');
+
+    // Quản lý buổi học chi tiết của môn
+    Route::post('/{subject_id}/sessions', [SubjectController::class, 'storeSession'])->name('sessions.store');
+    Route::put('/{subject_id}/sessions/{content_id}', [SubjectController::class, 'updateSession'])->name('sessions.update');
+    Route::delete('/{subject_id}/sessions/{content_id}', [SubjectController::class, 'destroySession'])->name('sessions.destroy');
+    Route::post('/{subject_id}/sessions/batch-update', [SubjectController::class, 'batchUpdateSessions'])->name('sessions.batch_update');
 });
 
 Route::prefix('schedules')->name('schedules.')->group(function () {
@@ -54,4 +70,17 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
 
     // 15. Cập nhật loại môn học (Tích hợp, Lý thuyết, Thực hành)
     Route::post('/subject/{id}/update-type', [ScheduleController::class, 'updateSubjectType'])->name('update_subject_type');
+
+    // 16. Tải lên trọn gói giáo án mẫu file ZIP (.zip)
+    Route::post('/subject/{subject_id}/upload-templates-zip', [ScheduleController::class, 'uploadLessonPlanTemplatesZip'])->name('subject.upload_templates_zip');
+
+    // 17. Tải lên lẻ file giáo án mẫu cho 1 buổi học (.docx)
+    Route::post('/subject/{subject_id}/session/{session_number}/upload-template', [ScheduleController::class, 'uploadSingleTemplate'])->name('subject.upload_single_template');
+
+    // 18. Xoá file giáo án mẫu của 1 buổi học
+    Route::post('/subject/{subject_id}/session/{session_number}/delete-template', [ScheduleController::class, 'deleteTemplate'])->name('subject.delete_template');
+
+    // 19. Tải về file giáo án mẫu gốc của 1 buổi học
+    Route::get('/subject/{subject_id}/session/{session_number}/download-template', [ScheduleController::class, 'downloadTemplate'])->name('subject.download_template');
 });
+

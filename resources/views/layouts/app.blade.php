@@ -247,6 +247,28 @@
                     </div>
                 </a>
 
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Main Navigation Links -->
+                <div class="collapse navbar-collapse ms-lg-4" id="mainNavbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-1">
+                        <li class="nav-item">
+                            <a class="nav-link px-3 py-1 rounded fw-semibold {{ request()->routeIs('schedules.*') ? 'active bg-primary-subtle text-primary border border-primary-subtle' : 'text-dark' }}" 
+                               href="{{ route('schedules.index') }}">
+                                <i class="fa-solid fa-calendar-days me-1 text-secondary"></i> Lịch Giảng Dạy
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link px-3 py-1 rounded fw-semibold {{ request()->routeIs('subjects.*') ? 'active bg-primary-subtle text-primary border border-primary-subtle' : 'text-dark' }}" 
+                               href="{{ route('subjects.index') }}">
+                                <i class="fa-solid fa-book-bookmark me-1 text-secondary"></i> Quản Lý Môn Học
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <!-- Right Menu: Teacher Switcher & Action Tools -->
                 <div class="d-flex align-items-center gap-2 ms-auto">
                     @yield('header_actions')

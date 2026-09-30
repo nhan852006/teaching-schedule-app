@@ -157,4 +157,21 @@ class SubjectContent extends Model
         }
         return "Giáo trình môn học, tài liệu bài giảng nội bộ và tài liệu kỹ thuật trực tuyến.";
     }
+
+    /**
+     * Lấy đường dẫn file giáo án mẫu Word (.docx) của buổi học này
+     */
+    public function getTemplatePath(): ?string
+    {
+        return $this->subject?->getTemplatePathForSession($this->session_number);
+    }
+
+    /**
+     * Kiểm tra buổi học này đã có file mẫu Word riêng chưa
+     */
+    public function hasTemplate(): bool
+    {
+        return !empty($this->getTemplatePath());
+    }
 }
+

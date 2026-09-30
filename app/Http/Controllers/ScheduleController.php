@@ -1111,4 +1111,146 @@ class ScheduleController extends Controller
             'form_code'    => $subject->form_code,
         ]);
     }
+
+    /**
+     * Tải lên trọn gói file ZIP chứa các file giáo án mẫu (.docx) cho các buổi học của môn
+     */
+    public function uploadLessonPlanTemplatesZip(Request $request, $subjectId)
+    {
+        $subject = Subject::findOrFail($subjectId);
+
+        $request->validate([
+            'zip_file' => 'required|file|max:102400', // Max 100MB
+        ]);
+
+        $zipFile = $request->file('zip_file');
+        $zip = new \ZipArchive();
+        $res = $zip->open($zipFile->getRealPath());
+
+        if ($res !== true) {
+            return back()->with('error', 'Không thể giải nén file ZIP. Vui lòng kiểm tra lại định dạng file nén.');
+        }
+
+        $targetDir = $subject->getTemplateDirectory();
+        $importedCount = 0;
+        $matchedSessions = [];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $filename = $zip->getNameIndex($i);
+
+            // Bỏ qua thư mục hoặc file tạm hệ thống của Mac (__MACOSX, .DS_Store)
+            if (str_contains($filename, '__MACOSX') || str_ends_with($filename, '/') || str_starts_with(basename($filename), '._')) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            if (!in_array($extension, ['docx', 'doc'])) {
+                continue;
+            }
+
+            $base = pathinfo($filename, PATHINFO_FILENAME);
+
+            // Nhận diện số buổi học qua regex: buoi_01, buoi_1, buoi 01, bai_01, session_01, buoi1, etc.
+            if (preg_match('/(?:buoi|bai|session)[_\-\s]*0*(\d+)/i', $base, $matches)) {
+                $sessionNum = (int)$matches[1];
+                $destFilename = 'buoi_' . sprintf('%02d', $sessionNum) . '.' . $extension;
+                $destPath = $targetDir . DIRECTORY_SEPARATOR . $destFilename;
+
+                $stream = $zip->getStream($filename);
+                if ($stream) {
+                    file_put_contents($destPath, stream_get_contents($stream));
+                    fclose($stream);
+                    $importedCount++;
+                    $matchedSessions[] = $sessionNum;
+                }
+            }
+        }
+        $zip->close();
+
+        if ($importedCount === 0) {
+            return back()->with('error', 'Không tìm thấy file giáo án hợp lệ trong file ZIP. Vui lòng đặt tên các file theo mẫu: buoi_01.docx, buoi_02.docx,...');
+        }
+
+        sort($matchedSessions);
+        $sessionsStr = implode(', ', array_unique($matchedSessions));
+
+        return back()->with('success', "Đã tải lên và tích hợp thành công {$importedCount} file giáo án mẫu (.docx) cho môn {$subject->code}! (Các buổi: {$sessionsStr})");
+    }
+
+    /**
+     * Tải lên lẻ 1 file giáo án mẫu Word cho 1 buổi học cụ thể
+     */
+    public function uploadSingleTemplate(Request $request, $subjectId, $sessionNumber): JsonResponse
+    {
+        $subject = Subject::findOrFail($subjectId);
+
+        $request->validate([
+            'template_file' => 'required|file|max:30720', // Max 30MB
+        ]);
+
+        $file = $request->file('template_file');
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (!in_array($extension, ['docx', 'doc'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File phải có định dạng .docx hoặc .doc',
+            ], 422);
+        }
+
+        $targetDir = $subject->getTemplateDirectory();
+        $destFilename = 'buoi_' . sprintf('%02d', $sessionNumber) . '.' . $extension;
+        $destPath = $targetDir . DIRECTORY_SEPARATOR . $destFilename;
+
+        $file->move($targetDir, $destFilename);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Đã lưu file giáo án mẫu cho Buổi #{$sessionNumber} thành công!",
+            'session_number' => $sessionNumber,
+            'filename' => $destFilename,
+        ]);
+    }
+
+    /**
+     * Xoá file giáo án mẫu của một buổi học cụ thể
+     */
+    public function deleteTemplate(Request $request, $subjectId, $sessionNumber): JsonResponse
+    {
+        $subject = Subject::findOrFail($subjectId);
+        $templatePath = $subject->getTemplatePathForSession($sessionNumber);
+
+        if ($templatePath && file_exists($templatePath)) {
+            @unlink($templatePath);
+            return response()->json([
+                'success' => true,
+                'message' => "Đã xoá file giáo án mẫu của Buổi #{$sessionNumber}!",
+                'session_number' => $sessionNumber,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "Không tìm thấy file mẫu của Buổi #{$sessionNumber}.",
+        ], 404);
+    }
+
+    /**
+     * Tải về file giáo án mẫu gốc của một buổi học
+     */
+    public function downloadTemplate($subjectId, $sessionNumber): BinaryFileResponse
+    {
+        $subject = Subject::findOrFail($subjectId);
+        $templatePath = $subject->getTemplatePathForSession($sessionNumber);
+
+        if (!$templatePath || !file_exists($templatePath)) {
+            abort(404, "Không tìm thấy file giáo án mẫu cho Buổi #{$sessionNumber}.");
+        }
+
+        $cleanSubjectCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $subject->code);
+        $downloadName = "Mau_Giao_An_Buoi_" . sprintf('%02d', $sessionNumber) . "_{$cleanSubjectCode}.docx";
+
+        return response()->download($templatePath, $downloadName);
+    }
 }
+
