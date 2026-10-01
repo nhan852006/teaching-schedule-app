@@ -1065,7 +1065,11 @@ class ScheduleController extends Controller
      */
     public function exportSingleLessonPlanPdf($scheduleId, LessonPlanWordService $lessonPlanService)
     {
-        $schedule = Schedule::with(['subject', 'class', 'teacher', 'subjectContent'])->findOrFail($scheduleId);
+        $schedule = Schedule::with(['subject', 'class', 'teacher'])->findOrFail($scheduleId);
+        $content = SubjectContent::where('subject_id', $schedule->subject_id)
+            ->where('session_number', $schedule->session_number)
+            ->first();
+        $schedule->setRelation('subjectContent', $content);
 
         $cleanClassName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $schedule->class?->name ?? 'Lop');
         $cleanSubjectCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $schedule->subject?->code ?? 'Mon');
@@ -1114,7 +1118,11 @@ class ScheduleController extends Controller
      */
     public function viewLessonPlanPdf($scheduleId, LessonPlanWordService $lessonPlanService)
     {
-        $schedule = Schedule::with(['subject', 'class', 'teacher', 'subjectContent'])->findOrFail($scheduleId);
+        $schedule = Schedule::with(['subject', 'class', 'teacher'])->findOrFail($scheduleId);
+        $content = SubjectContent::where('subject_id', $schedule->subject_id)
+            ->where('session_number', $schedule->session_number)
+            ->first();
+        $schedule->setRelation('subjectContent', $content);
         $subject = $schedule->subject;
         $class = $schedule->class;
         $teacherName = $schedule->teacher?->name ?? ($subject?->teacher?->name ?? 'Hoàng Văn Nhân');
