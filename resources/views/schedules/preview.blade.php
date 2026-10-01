@@ -169,7 +169,20 @@
                                            class="btn btn-xs btn-success py-0 px-2 shadow-sm text-white fw-semibold" 
                                            title="Tải giáo án Word đã tự động điền Lớp và Ngày dạy theo lịch của lớp này" 
                                            style="font-size: 0.74rem;">
-                                            <i class="fa-solid fa-file-word me-1"></i>Tải giáo án lớp này (.docx)
+                                            <i class="fa-solid fa-file-word me-1"></i>Tải giáo án (.docx)
+                                        </a>
+                                        <a href="{{ route('schedules.export_single_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                           class="btn btn-xs btn-danger py-0 px-2 shadow-sm text-white fw-semibold" 
+                                           title="Tải giáo án PDF đã tự động điền Lớp và Ngày dạy (.pdf)" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-pdf me-1"></i>Tải PDF (.pdf)
+                                        </a>
+                                        <a href="{{ route('schedules.view_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                           target="_blank"
+                                           class="btn btn-xs btn-outline-dark py-0 px-2 shadow-sm fw-semibold" 
+                                           title="Xem và In PDF trực tiếp chuẩn A4" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-print me-1"></i>Xem & In PDF
                                         </a>
                                         <a href="{{ route('schedules.subject.download_template', ['subject_id' => $subject->id, 'session_number' => $item->session_number]) }}" 
                                            class="btn btn-xs btn-outline-secondary py-0 px-1" title="Tải file mẫu gốc chưa điền thông tin" style="font-size: 0.72rem;">
@@ -189,6 +202,25 @@
                                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0" style="font-size: 0.74rem;">
                                             <i class="fa-solid fa-file-lines me-1"></i>Dùng mẫu sinh tự động
                                         </span>
+                                        <a href="{{ route('schedules.export_single_lesson_plan', ['schedule_id' => $item->id]) }}" 
+                                           class="btn btn-xs btn-primary py-0 px-2 shadow-sm text-white fw-semibold" 
+                                           title="Tải giáo án Word tự động sinh theo mẫu quy định" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-word me-1"></i>Tải giáo án (.docx)
+                                        </a>
+                                        <a href="{{ route('schedules.export_single_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                           class="btn btn-xs btn-danger py-0 px-2 shadow-sm text-white fw-semibold" 
+                                           title="Tải giáo án PDF theo mẫu quy định (.pdf)" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-file-pdf me-1"></i>Tải PDF (.pdf)
+                                        </a>
+                                        <a href="{{ route('schedules.view_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                           target="_blank"
+                                           class="btn btn-xs btn-outline-dark py-0 px-2 shadow-sm fw-semibold" 
+                                           title="Xem và In PDF trực tiếp chuẩn A4" 
+                                           style="font-size: 0.74rem;">
+                                            <i class="fa-solid fa-print me-1"></i>Xem & In PDF
+                                        </a>
                                         <button type="button" class="btn btn-xs btn-outline-success py-0 px-1" 
                                                 onclick="openSingleUploadModal({{ $item->session_number }})" 
                                                 title="Tải lên file mẫu Word riêng cho buổi này" style="font-size: 0.72rem;">
@@ -265,8 +297,23 @@
                                     <a href="{{ route('schedules.export_single_lesson_plan', ['schedule_id' => $item->id]) }}" 
                                        class="btn btn-sm btn-outline-primary" 
                                        title="Tải Giáo án Word buổi #{{ $item->session_number }} (.docx)" 
-                                       aria-label="Tải Giáo án buổi {{ $item->session_number }}">
+                                       aria-label="Tải Giáo án Word buổi {{ $item->session_number }}">
                                         <i class="fa-solid fa-file-word" aria-hidden="true"></i>
+                                    </a>
+                                    <!-- Nút Tải Giáo án PDF buổi này -->
+                                    <a href="{{ route('schedules.export_single_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       title="Tải Giáo án PDF buổi #{{ $item->session_number }} (.pdf)" 
+                                       aria-label="Tải Giáo án PDF buổi {{ $item->session_number }}">
+                                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                                    </a>
+                                    <!-- Nút Xem & In PDF chuẩn A4 -->
+                                    <a href="{{ route('schedules.view_lesson_plan_pdf', ['schedule_id' => $item->id]) }}" 
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-dark" 
+                                       title="Xem & In PDF chuẩn A4 buổi #{{ $item->session_number }}" 
+                                       aria-label="In PDF buổi {{ $item->session_number }}">
+                                        <i class="fa-solid fa-print" aria-hidden="true"></i>
                                     </a>
                                 </div>
                                 <div class="saving-indicator text-muted mt-1" id="saving-{{ $item->id }}" style="display: none;" aria-live="polite">

@@ -1061,6 +1061,105 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Xuất lẻ giáo án của 1 buổi học dạng file PDF (.pdf)
+     */
+    public function exportSingleLessonPlanPdf($scheduleId, LessonPlanWordService $lessonPlanService)
+    {
+        $schedule = Schedule::with(['subject', 'class', 'teacher', 'subjectContent'])->findOrFail($scheduleId);
+
+        $cleanClassName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $schedule->class?->name ?? 'Lop');
+        $cleanSubjectCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $schedule->subject?->code ?? 'Mon');
+        $downloadName = 'Giao_An_So_' . sprintf('%02d', $schedule->session_number) . '_' . $cleanClassName . '_' . $cleanSubjectCode . '.pdf';
+
+        // 1. Tạo file Word đã điền dữ liệu động
+        $wordPath = $lessonPlanService->exportSinglePlan($schedule, request()->all());
+
+        // 2. Chuyển đổi sang file HTML trung gian qua textutil của macOS
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+        }
+        @chmod($tempDir, 0777);
+
+        $htmlPath = $tempDir . DIRECTORY_SEPARATOR . 'lp_' . $schedule->id . '_' . uniqid() . '.html';
+        $pdfPath = $tempDir . DIRECTORY_SEPARATOR . 'lp_' . $schedule->id . '_' . uniqid() . '.pdf';
+
+        @shell_exec('textutil -convert html ' . escapeshellarg($wordPath) . ' -output ' . escapeshellarg($htmlPath));
+
+        // 3. Nếu trên máy chủ có Chrome headless, thử chuyển trực tiếp sang PDF
+        $chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+        if (file_exists($chromePath) && file_exists($htmlPath)) {
+            @shell_exec(escapeshellarg($chromePath) . ' --headless --disable-gpu --no-sandbox --no-pdf-header-footer --print-to-pdf=' . escapeshellarg($pdfPath) . ' ' . escapeshellarg($htmlPath) . ' 2>&1');
+        }
+
+        // 4. Nếu file PDF được sinh thành công, trả về download ngay
+        if (file_exists($pdfPath) && filesize($pdfPath) > 500) {
+            if (file_exists($wordPath)) @unlink($wordPath);
+            if (file_exists($htmlPath)) @unlink($htmlPath);
+            return response()->download($pdfPath, $downloadName)->deleteFileAfterSend(true);
+        }
+
+        // 5. Nếu không thể convert headless trong môi trường máy chủ, chuyển hướng sang giao diện Xem & In PDF chuẩn A4 kèm tự động mở hộp thoại in PDF
+        if (file_exists($wordPath)) @unlink($wordPath);
+        if (file_exists($htmlPath)) @unlink($htmlPath);
+
+        return redirect()->route('schedules.view_lesson_plan_pdf', [
+            'schedule_id' => $scheduleId,
+            'auto_print'  => 1
+        ]);
+    }
+
+    /**
+     * Xem trước và In giáo án dạng PDF chuẩn A4
+     */
+    public function viewLessonPlanPdf($scheduleId, LessonPlanWordService $lessonPlanService)
+    {
+        $schedule = Schedule::with(['subject', 'class', 'teacher', 'subjectContent'])->findOrFail($scheduleId);
+        $subject = $schedule->subject;
+        $class = $schedule->class;
+        $teacherName = $schedule->teacher?->name ?? ($subject?->teacher?->name ?? 'Hoàng Văn Nhân');
+        $headOfDept = 'THÁI QUỐC THẮNG';
+        $autoPrint = request()->boolean('auto_print', false);
+
+        $customHtml = null;
+
+        // Nếu môn học có file mẫu Word riêng đã tải lên
+        if ($subject && $subject->hasTemplateForSession($schedule->session_number)) {
+            try {
+                $wordPath = $lessonPlanService->exportSinglePlan($schedule, request()->all());
+                $tempDir = storage_path('app/temp');
+                $htmlPath = $tempDir . DIRECTORY_SEPARATOR . 'preview_' . $schedule->id . '_' . uniqid() . '.html';
+
+                @shell_exec('textutil -convert html ' . escapeshellarg($wordPath) . ' -output ' . escapeshellarg($htmlPath));
+
+                if (file_exists($htmlPath)) {
+                    $rawHtml = file_get_contents($htmlPath);
+                    // Tách phần body để nhúng sạch vào template
+                    if (preg_match('/<body[^>]*>(.*?)<\/body>/si', $rawHtml, $matches)) {
+                        $customHtml = $matches[1];
+                    } else {
+                        $customHtml = $rawHtml;
+                    }
+                    @unlink($htmlPath);
+                }
+                if (file_exists($wordPath)) @unlink($wordPath);
+            } catch (Exception $e) {
+                $customHtml = null;
+            }
+        }
+
+        return view('schedules.lesson_plan_print_pdf', compact(
+            'schedule',
+            'subject',
+            'class',
+            'teacherName',
+            'headOfDept',
+            'customHtml',
+            'autoPrint'
+        ));
+    }
+
+    /**
      * Cập nhật thông tin chi tiết giáo án của một buổi học (Mục tiêu, hoạt động, đồ dùng...)
      */
     public function updateLessonPlan(Request $request, $id): JsonResponse

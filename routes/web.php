@@ -94,5 +94,11 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
 
     // 19. Tải về file giáo án mẫu gốc của 1 buổi học
     Route::get('/subject/{subject_id}/session/{session_number}/download-template', [ScheduleController::class, 'downloadTemplate'])->name('subject.download_template');
+
+    // 20. Tải file Giáo Án PDF của 1 buổi học cụ thể (.pdf)
+    Route::get('/schedule/{schedule_id}/export-lesson-plan-pdf', [ScheduleController::class, 'exportSingleLessonPlanPdf'])->name('export_single_lesson_plan_pdf');
+
+    // 21. Xem trước & In Giáo Án dạng PDF chuẩn A4
+    Route::get('/schedule/{schedule_id}/view-lesson-plan-pdf', [ScheduleController::class, 'viewLessonPlanPdf'])->name('view_lesson_plan_pdf');
 });
 
