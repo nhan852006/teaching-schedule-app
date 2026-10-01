@@ -433,7 +433,7 @@
                         <th scope="col">Tên Học phần</th>
                         <th scope="col" style="width: 140px;">Mã môn</th>
                         <th scope="col" class="text-center" style="width: 110px;">Quy mô</th>
-                        <th scope="col" class="text-center" style="width: 230px;">Thao tác chuyên vụ</th>
+                        <th scope="col" class="text-center" style="width: 315px;">Thao tác chuyên vụ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -447,12 +447,12 @@
                             </td>
                             <td>
                                 <span class="badge bg-light text-secondary border px-2 py-1 font-monospace">
-                                    {{ $p->subject?->code }}
+                                     {{ $p->subject?->code }}
                                 </span>
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
-                                    {{ $p->total_schedules }} buổi
+                                     {{ $p->total_schedules }} buổi
                                 </span>
                             </td>
                             <td class="text-center">
@@ -468,6 +468,12 @@
                                     <a href="{{ route('schedules.export_lesson_plans', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
                                        class="btn btn-outline-info" title="Xuất trọn bộ Sổ Giáo Án (.docx)" aria-label="Xuất Sổ Giáo Án lớp {{ $p->class?->name }}">
                                         <i class="fa-solid fa-book-bookmark me-1" aria-hidden="true"></i> Sổ Giáo Án
+                                    </a>
+                                    <a href="{{ route('schedules.export_lesson_plans_zip', ['class_id' => $p->class_id, 'subject_id' => $p->subject_id]) }}" 
+                                       class="btn btn-outline-warning text-dark fw-semibold" 
+                                       title="Tải trọn gói file ZIP chia từng buổi kèm trang bìa ({{ $p->class?->name }}-{{ $p->subject?->code }}.zip)" 
+                                       aria-label="Tải ZIP giáo án lớp {{ $p->class?->name }}">
+                                        <i class="fa-solid fa-file-zipper me-1 text-warning" aria-hidden="true"></i> Tải ZIP
                                     </a>
                                 </div>
                             </td>

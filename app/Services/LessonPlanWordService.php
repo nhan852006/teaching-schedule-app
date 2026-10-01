@@ -124,6 +124,96 @@ class LessonPlanWordService
     }
 
     /**
+     * Xuất riêng 1 file Trang Bìa Sổ Giáo Án (.docx)
+     */
+    public function exportCoverPageDocx(Classes $class, Subject $subject, string $teacherName, array $options = []): string
+    {
+        $tempDir = $this->initTempDir();
+        $phpWord = new PhpWord();
+        $phpWord->setDefaultFontName('Times New Roman');
+        $phpWord->setDefaultFontSize(11);
+
+        $type = $subject->effective_type ?? 'integrated';
+        $year = (int)($options['nam'] ?? date('Y'));
+        $academicYear = $options['nam_hoc'] ?? "{$year}-" . ($year + 1);
+
+        $this->renderCoverPage($phpWord, $class, $subject, $teacherName, $academicYear, $year, $type);
+
+        $cleanClassName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $class->name);
+        $cleanSubjectCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $subject->code);
+        $fileName = "00_Trang_Bia_{$cleanClassName}_{$cleanSubjectCode}_" . uniqid() . ".docx";
+        $outputPath = $tempDir . DIRECTORY_SEPARATOR . $fileName;
+
+        $oldErrorLevel = error_reporting();
+        error_reporting($oldErrorLevel & ~E_NOTICE);
+        try {
+            $writer = IOFactory::createWriter($phpWord, 'Word2007');
+            $writer->save($outputPath);
+        } finally {
+            error_reporting($oldErrorLevel);
+        }
+
+        return $outputPath;
+    }
+
+    /**
+     * Xuất trọn gói toàn bộ giáo án từng buổi của lớp chia thành các file lẻ và nén vào 1 file ZIP
+     * Kèm theo file: 00_Trang_Bia_[tenlop]_[mamon].docx
+     * Tên các file con: Giao_An_So_XX_[tenlop]_[mamon].docx
+     */
+    public function exportClassLessonPlansZip(Classes $class, Subject $subject, $schedules, array $options = []): string
+    {
+        $tempDir = $this->initTempDir();
+        $cleanClassName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $class->name);
+        $cleanSubjectCode = preg_replace('/[^A-Za-z0-9_\-]/', '_', $subject->code);
+
+        $firstSession = is_iterable($schedules) ? (is_object($schedules) && method_exists($schedules, 'first') ? $schedules->first() : ($schedules[0] ?? null)) : null;
+        $firstDate = $firstSession?->teaching_date;
+        $firstCarbon = $firstDate ? Carbon::parse($firstDate) : Carbon::now();
+        $year = (int)($options['nam'] ?? $firstCarbon->year);
+        $academicYear = $options['nam_hoc'] ?? "{$year}-" . ($year + 1);
+        $options['nam'] = $year;
+        $options['nam_hoc'] = $academicYear;
+
+        $zipPath = $tempDir . DIRECTORY_SEPARATOR . "{$cleanClassName}-{$cleanSubjectCode}_" . uniqid() . ".zip";
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new Exception("Không thể tạo file ZIP tại: {$zipPath}");
+        }
+
+        $teacherName = $options['giang_vien'] ?? ($subject->teacher?->name ?? 'Hoàng Văn Nhân');
+        $createdFiles = [];
+
+        try {
+            // 1. Thêm file Trang Bìa (00_Trang_Bia_...)
+            $coverDocxPath = $this->exportCoverPageDocx($class, $subject, $teacherName, $options);
+            $createdFiles[] = $coverDocxPath;
+            $coverEntryName = "00_Trang_Bia_{$cleanClassName}_{$cleanSubjectCode}.docx";
+            $zip->addFile($coverDocxPath, $coverEntryName);
+
+            // 2. Thêm từng giáo án của các buổi học
+            foreach ($schedules as $schedule) {
+                $sessDocxPath = $this->exportSinglePlan($schedule, $options);
+                $createdFiles[] = $sessDocxPath;
+                $sessPad = sprintf('%02d', $schedule->session_number);
+                $entryName = "Giao_An_So_{$sessPad}_{$cleanClassName}_{$cleanSubjectCode}.docx";
+                $zip->addFile($sessDocxPath, $entryName);
+            }
+
+            $zip->close();
+        } finally {
+            // Dọn dẹp tất cả các file tạm lẻ sau khi nén vào file ZIP
+            foreach ($createdFiles as $f) {
+                if (file_exists($f)) {
+                    @unlink($f);
+                }
+            }
+        }
+
+        return $zipPath;
+    }
+
+    /**
      * Xuất lẻ giáo án của 1 buổi học cụ thể
      */
     public function exportSinglePlan(Schedule $schedule, array $options = []): string

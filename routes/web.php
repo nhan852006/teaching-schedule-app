@@ -74,6 +74,9 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
     // 12. Xuất trọn bộ Sổ Giáo Án ra file Word .docx (Mẫu 9a, 9b, 9c)
     Route::get('/class/{class_id}/subject/{subject_id}/export-lesson-plans', [ScheduleController::class, 'exportLessonPlansBooklet'])->name('export_lesson_plans');
 
+    // 12b. Tải sổ giáo án đồng loạt từng buổi nén trong file ZIP ([tenlop]-[mã môn học].zip)
+    Route::get('/class/{class_id}/subject/{subject_id}/export-lesson-plans-zip', [ScheduleController::class, 'exportLessonPlansZip'])->name('export_lesson_plans_zip');
+
     // 13. Xuất lẻ giáo án của 1 buổi học cụ thể
     Route::get('/schedule/{schedule_id}/export-lesson-plan', [ScheduleController::class, 'exportSingleLessonPlan'])->name('export_single_lesson_plan');
 

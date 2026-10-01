@@ -23,8 +23,16 @@
     </button>
     <!-- Nút Xuất Sổ Giáo Án -->
     <a href="{{ route('schedules.export_lesson_plans', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
-       class="btn btn-sm btn-academic-outline px-3 shadow-sm" aria-label="Xuất trọn bộ Sổ Giáo Án (.docx)">
+       class="btn btn-sm btn-academic-outline px-3 shadow-sm" aria-label="Xuất trọn bộ Sổ Giáo Án (.docx)"
+       title="Xuất trọn bộ Sổ Giáo Án gộp chung thành 1 file Word (.docx)">
         <i class="fa-solid fa-book-bookmark text-primary me-1" aria-hidden="true"></i> Xuất Sổ Giáo Án (.docx)
+    </a>
+    <!-- Nút Tải trọn gói ZIP (Tách riêng từng buổi) -->
+    <a href="{{ route('schedules.export_lesson_plans_zip', ['class_id' => $class->id, 'subject_id' => $subject->id]) }}" 
+       class="btn btn-sm btn-warning text-dark fw-semibold px-3 shadow-sm" 
+       title="Tải về file ZIP chứa toàn bộ giáo án từng buổi riêng biệt kèm trang bìa ({{ $class->name }}-{{ $subject->code }}.zip)" 
+       aria-label="Tải trọn gói ZIP giáo án từng buổi">
+        <i class="fa-solid fa-file-zipper me-1" aria-hidden="true"></i> Tải trọn gói ZIP (.zip)
     </a>
 @endsection
 

@@ -1046,6 +1046,24 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Xuất trọn gói toàn bộ giáo án từng buổi của lớp nén trong 1 file ZIP ([tenlop]-[mã môn học].zip)
+     */
+    public function exportLessonPlansZip($classId, $subjectId, LessonPlanWordService $lessonPlanService): BinaryFileResponse
+    {
+        $class = Classes::findOrFail($classId);
+        $subject = Subject::findOrFail($subjectId);
+
+        $schedules = $this->getSchedulesWithContent($classId, $subjectId);
+        $schedules->loadMissing(['class', 'subject', 'teacher']);
+
+        $zipPath = $lessonPlanService->exportClassLessonPlansZip($class, $subject, $schedules, request()->all());
+
+        $downloadName = $class->name . '-' . $subject->code . '.zip';
+
+        return response()->download($zipPath, $downloadName)->deleteFileAfterSend(true);
+    }
+
+    /**
      * Xuất lẻ giáo án của 1 buổi học
      */
     public function exportSingleLessonPlan($scheduleId, LessonPlanWordService $lessonPlanService): BinaryFileResponse
