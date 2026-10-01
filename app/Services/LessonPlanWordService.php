@@ -401,6 +401,45 @@ class LessonPlanWordService
             }
         }
 
+        // Bổ sung các định dạng ảnh phổ biến vào [Content_Types].xml nếu còn thiếu
+        $contentTypesXml = $baseFiles['[Content_Types].xml'] ?? '';
+        if (!empty($contentTypesXml)) {
+            $neededMimes = [
+                'png'  => 'image/png',
+                'gif'  => 'image/gif',
+                'jpeg' => 'image/jpeg',
+                'jpg'  => 'image/jpeg',
+                'emf'  => 'image/x-emf',
+                'wmf'  => 'image/x-wmf',
+                'tiff' => 'image/tiff',
+                'tif'  => 'image/tiff',
+            ];
+            foreach ($neededMimes as $ext => $mime) {
+                if (!str_contains($contentTypesXml, 'Extension="' . $ext . '"')) {
+                    $contentTypesXml = str_replace('</Types>', '<Default Extension="' . $ext . '" ContentType="' . $mime . '"/></Types>', $contentTypesXml);
+                }
+            }
+            $baseFiles['[Content_Types].xml'] = $contentTypesXml;
+        }
+
+        // Đọc relationships XML của file gốc và tìm Relationship ID của Footer chuẩn
+        $masterFooterRelId = null;
+        $relsXmlDoc = new \DOMDocument();
+        if (!empty($baseRelsXml)) {
+            @$relsXmlDoc->loadXML($baseRelsXml);
+            $relNodes = $relsXmlDoc->getElementsByTagName('Relationship');
+            foreach ($relNodes as $relNode) {
+                $rType = $relNode->getAttribute('Type');
+                $rTarget = $relNode->getAttribute('Target');
+                if (str_contains($rType, '/relationships/footer') || str_starts_with($rTarget, 'footer')) {
+                    $masterFooterRelId = $relNode->getAttribute('Id');
+                    break;
+                }
+            }
+        } else {
+            $relsXmlDoc->loadXML('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
+        }
+
         // Tách body và phần sectPr kết thúc của file gốc
         $bStart = strpos($baseDocXml, '<w:body>');
         $bEnd = strrpos($baseDocXml, '</w:body>');
@@ -409,13 +448,30 @@ class LessonPlanWordService
         }
         $bStart += strlen('<w:body>');
         $baseBody = substr($baseDocXml, $bStart, $bEnd - $bStart);
+        $baseBody = rtrim($baseBody);
 
-        $trailingSectPr = '';
-        if (preg_match('/(<w:sectPr[\s\S]*?<\/w:sectPr>)$/', $baseBody, $matches)) {
-            $trailingSectPr = $matches[1];
-            $combinedBody = substr($baseBody, 0, -strlen($trailingSectPr));
+        // Tìm sectPr cuối cùng chính xác bằng strrpos để không làm rách XML (tránh regex tham lam)
+        $lastSectPos = strrpos($baseBody, '<w:sectPr');
+        if ($lastSectPos !== false && str_ends_with($baseBody, '</w:sectPr>')) {
+            $baseTrailingSectPr = substr($baseBody, $lastSectPos);
+            $combinedBody = substr($baseBody, 0, $lastSectPos);
         } else {
+            $baseTrailingSectPr = '<w:sectPr><w:pgSz w:w="11907" w:h="16840" w:code="9"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:cols w:space="720"/><w:docGrid w:linePitch="360"/></w:sectPr>';
             $combinedBody = $baseBody;
+        }
+
+        // Chuẩn hoá footer trong sectPr chuẩn
+        if ($masterFooterRelId) {
+            if (str_contains($baseTrailingSectPr, '<w:footerReference')) {
+                $stdSectPr = preg_replace('/<w:footerReference\b[^>]*\/>/', '<w:footerReference w:type="default" r:id="' . $masterFooterRelId . '"/>', $baseTrailingSectPr);
+            } else {
+                $stdSectPr = preg_replace('/(<w:sectPr\b[^>]*>)/', '$1<w:footerReference w:type="default" r:id="' . $masterFooterRelId . '"/>', $baseTrailingSectPr);
+            }
+            // Chuẩn hoá tất cả footer references trong phần thân buổi 1
+            $combinedBody = preg_replace('/<w:footerReference\b[^>]*\/>/', '<w:footerReference w:type="default" r:id="' . $masterFooterRelId . '"/>', $combinedBody);
+        } else {
+            $stdSectPr = preg_replace('/<w:footerReference\b[^>]*\/>/', '', $baseTrailingSectPr);
+            $combinedBody = preg_replace('/<w:footerReference\b[^>]*\/>/', '', $combinedBody);
         }
 
         // Chèn Trang Bìa chuẩn lên đầu (nếu có thông tin bìa)
@@ -424,20 +480,7 @@ class LessonPlanWordService
             $combinedBody = $coverXml . $combinedBody;
         }
 
-        // Thêm ngắt phần (Section Break) ngăn cách giữa các buổi
-        if (!empty($trailingSectPr) && count($sessionDocPaths) > 1) {
-            $combinedBody .= "<w:p><w:pPr>{$trailingSectPr}</w:pPr></w:p>";
-        }
-
-        // Đọc relationships XML của file gốc
-        $relsXmlDoc = new \DOMDocument();
-        if (!empty($baseRelsXml)) {
-            @$relsXmlDoc->loadXML($baseRelsXml);
-        } else {
-            $relsXmlDoc->loadXML('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>');
-        }
-
-        $rIdCounter = 600;
+        $rIdCounter = 1000;
 
         // Lần lượt ghép các file giáo án của các buổi tiếp theo
         for ($docIdx = 1; $docIdx < count($sessionDocPaths); $docIdx++) {
@@ -482,7 +525,7 @@ class LessonPlanWordService
                             }
 
                             $rIdCounter++;
-                            $newId = "rIdDoc{$docIdx}_{$rIdCounter}";
+                            $newId = "rIdMed{$rIdCounter}";
                             $rIdMap[$oldId] = $newId;
 
                             $newRel = $relsXmlDoc->createElementNS('http://schemas.openxmlformats.org/package/2006/relationships', 'Relationship');
@@ -497,9 +540,19 @@ class LessonPlanWordService
                 }
             }
 
+            // Sắp xếp key dài trước ngắn sau để tránh thay thế nhầm chuỗi con
+            uksort($rIdMap, fn($a, $b) => strlen($b) <=> strlen($a));
+
             // Thay thế các ID liên kết ảnh trong XML buổi này
             foreach ($rIdMap as $oldId => $newId) {
                 $subDocXml = preg_replace('/([\" >])' . preg_quote($oldId, '/') . '([\" <])/', '$1' . $newId . '$2', $subDocXml);
+            }
+
+            // Đồng bộ toàn bộ liên kết chân trang về footer của master document
+            if ($masterFooterRelId) {
+                $subDocXml = preg_replace('/<w:footerReference\b[^>]*\/>/', '<w:footerReference w:type="default" r:id="' . $masterFooterRelId . '"/>', $subDocXml);
+            } else {
+                $subDocXml = preg_replace('/<w:footerReference\b[^>]*\/>/', '', $subDocXml);
             }
 
             // Trích xuất phần thân buổi này
@@ -510,24 +563,35 @@ class LessonPlanWordService
             }
             $sStart += strlen('<w:body>');
             $subBody = substr($subDocXml, $sStart, $sEnd - $sStart);
+            $subBody = rtrim($subBody);
 
-            $subSectPr = '';
-            if (preg_match('/(<w:sectPr[\s\S]*?<\/w:sectPr>)$/', $subBody, $sMatches)) {
-                $subSectPr = $sMatches[1];
-                $subMain = substr($subBody, 0, -strlen($subSectPr));
-                $trailingSectPr = $subSectPr;
+            $lastSubSectPos = strrpos($subBody, '<w:sectPr');
+            if ($lastSubSectPos !== false && str_ends_with($subBody, '</w:sectPr>')) {
+                $subMain = substr($subBody, 0, $lastSubSectPos);
             } else {
                 $subMain = $subBody;
             }
 
-            if ($docIdx < count($sessionDocPaths) - 1) {
-                $combinedBody .= $subMain . "<w:p><w:pPr>{$trailingSectPr}</w:pPr></w:p>";
-            } else {
-                $combinedBody .= $subMain;
-            }
+            // Thêm ngắt phần giữa các buổi và ghép nội dung buổi mới
+            $combinedBody .= "<w:p><w:pPr>{$stdSectPr}</w:pPr></w:p>" . $subMain;
         }
 
-        $finalDocXml = substr($baseDocXml, 0, $bStart) . $combinedBody . $trailingSectPr . substr($baseDocXml, $bEnd);
+        // Đóng lại với sectPr cuối cùng của văn bản
+        $finalDocXml = substr($baseDocXml, 0, $bStart) . $combinedBody . $stdSectPr . substr($baseDocXml, $bEnd);
+
+        // Đánh lại số thứ tự id duy nhất cho toàn bộ wp:docPr để tuân thủ 100% chuẩn OpenXML
+        $docPrCounter = 0;
+        $finalDocXml = preg_replace_callback('/<wp:docPr\b([^>]*)>/', function($m) use (&$docPrCounter) {
+            $docPrCounter++;
+            $attrs = $m[1];
+            if (preg_match('/id="[^"]*"/', $attrs)) {
+                $attrs = preg_replace('/id="[^"]*"/', 'id="' . $docPrCounter . '"', $attrs);
+            } else {
+                $attrs .= ' id="' . $docPrCounter . '"';
+            }
+            return '<wp:docPr' . $attrs . '>';
+        }, $finalDocXml);
+
         $finalRelsXml = $relsXmlDoc->saveXML();
 
         // Tạo file zip đầu ra hoàn chỉnh
@@ -541,6 +605,8 @@ class LessonPlanWordService
                 $outZip->addFromString($fname, $finalDocXml);
             } elseif ($fname === 'word/_rels/document.xml.rels') {
                 $outZip->addFromString($fname, $finalRelsXml);
+            } elseif ($fname === '[Content_Types].xml') {
+                $outZip->addFromString($fname, $contentTypesXml);
             } elseif (!str_starts_with($fname, 'word/media/')) {
                 $outZip->addFromString($fname, $fcontent);
             }
