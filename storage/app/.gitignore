@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+!lesson_plan_templates/
+!lesson_plan_templates/**
 !.gitignore
