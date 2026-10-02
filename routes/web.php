@@ -40,7 +40,10 @@ Route::get('/health', function () {
             'counts' => $counts,
         ],
     ], $dbOk ? 200 : 500);
-});
+})->withoutMiddleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+]);
 
 // Trang chủ tự động chuyển đến Dashboard
 Route::get('/', function () {

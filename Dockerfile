@@ -53,6 +53,13 @@ COPY --from=frontend /app/public/build /var/www/html/public/build
 # Cài đặt PHP dependencies chuẩn Production (không cài dev packages để tối ưu dung lượng)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Cập nhật chứng chỉ số CA cho kết nối TLS TiDB Cloud
+RUN update-ca-certificates
+
+# Cho phép PHP-FPM nhận toàn bộ biến môi trường từ hệ thống
+RUN echo "clear_env = no" >> /usr/local/etc/php-fpm.d/zz-docker.conf \
+    && echo "clear_env = no" >> /usr/local/etc/php-fpm.d/www.conf
+
 # Cấu hình Web Server và Process Manager
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
