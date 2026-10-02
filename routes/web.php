@@ -145,3 +145,11 @@ Route::prefix('schedules')->name('schedules.')->group(function () {
     Route::get('/schedule/{schedule_id}/view-lesson-plan-pdf', [ScheduleController::class, 'viewLessonPlanPdf'])->name('view_lesson_plan_pdf');
 });
 
+
+Route::get('/debug-log', function () {
+    $logPath = storage_path('logs/laravel.log');
+    if (file_exists($logPath)) {
+        return response()->file($logPath);
+    }
+    return 'No log file found.';
+})->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class]);

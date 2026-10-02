@@ -540,11 +540,10 @@ class LessonPlanWordService
         $baseBody = substr($baseDocXml, $bStart, $bEnd - $bStart);
         $baseBody = rtrim($baseBody);
 
-        // Tìm sectPr cuối cùng chính xác bằng strrpos để không làm rách XML (tránh regex tham lam)
-        $lastSectPos = strrpos($baseBody, '<w:sectPr');
-        if ($lastSectPos !== false && str_ends_with($baseBody, '</w:sectPr>')) {
-            $baseTrailingSectPr = substr($baseBody, $lastSectPos);
-            $combinedBody = substr($baseBody, 0, $lastSectPos);
+        // Dùng regex chính xác nhất để tách block sectPr ở cuối văn bản
+        if (preg_match('/<w:sectPr\b[^>]*>.*?<\/w:sectPr>$/s', $baseBody, $matches)) {
+            $baseTrailingSectPr = $matches[0];
+            $combinedBody = substr($baseBody, 0, -strlen($baseTrailingSectPr));
         } else {
             $baseTrailingSectPr = '<w:sectPr><w:pgSz w:w="11907" w:h="16840" w:code="9"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:cols w:space="720"/><w:docGrid w:linePitch="360"/></w:sectPr>';
             $combinedBody = $baseBody;
@@ -655,9 +654,9 @@ class LessonPlanWordService
             $subBody = substr($subDocXml, $sStart, $sEnd - $sStart);
             $subBody = rtrim($subBody);
 
-            $lastSubSectPos = strrpos($subBody, '<w:sectPr');
-            if ($lastSubSectPos !== false && str_ends_with($subBody, '</w:sectPr>')) {
-                $subMain = substr($subBody, 0, $lastSubSectPos);
+            // Tìm và tách bỏ sectPr cuối cùng của subDoc
+            if (preg_match('/<w:sectPr\b[^>]*>.*?<\/w:sectPr>$/s', $subBody, $m)) {
+                $subMain = substr($subBody, 0, -strlen($m[0]));
             } else {
                 $subMain = $subBody;
             }
