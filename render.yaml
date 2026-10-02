@@ -5,16 +5,16 @@ services:
     plan: free
     region: singapore
     dockerfilePath: Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: APP_NAME
         value: "Hệ Thống Lịch Giảng Dạy"
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: "false"
+        value: "true"
       - key: APP_KEY
-        generateValue: true
+        value: "base64:qStF1AGo/5lPD4aFW1WJ3fLYgx5EnkxL+spw43vXxzM="
       - key: APP_URL
         fromService:
           type: web
@@ -34,8 +34,10 @@ services:
         value: "Tl5nqVfJF5UpSw3K"
       - key: MYSQL_ATTR_SSL_CA
         value: "/etc/ssl/certs/ca-certificates.crt"
+      - key: MYSQL_ATTR_SSL_VERIFY_SERVER_CERT
+        value: "false"
       - key: SESSION_DRIVER
-        value: database
+        value: file
       - key: FILESYSTEM_DISK
         value: local
       - key: LOG_CHANNEL

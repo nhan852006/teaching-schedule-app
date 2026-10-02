@@ -5,6 +5,43 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 
+use Illuminate\Support\Facades\DB;
+
+// Health Check Endpoint (dùng cho Render & chẩn đoán kết nối Cloud)
+Route::get('/health', function () {
+    $dbOk = false;
+    $dbError = null;
+    $counts = [];
+    try {
+        DB::connection()->getPdo();
+        $dbOk = true;
+        $counts = [
+            'users' => \App\Models\User::count(),
+            'classes' => \App\Models\Classes::count(),
+            'subjects' => \App\Models\Subject::count(),
+            'schedules' => \App\Models\Schedule::count(),
+        ];
+    } catch (\Throwable $e) {
+        $dbError = $e->getMessage();
+    }
+
+    return response()->json([
+        'status' => $dbOk ? 'ok' : 'degraded',
+        'php' => PHP_VERSION,
+        'app_key_set' => !empty(config('app.key')),
+        'app_key_starts_with_base64' => str_starts_with((string)config('app.key', ''), 'base64:'),
+        'session_driver' => config('session.driver'),
+        'database' => [
+            'connected' => $dbOk,
+            'driver' => config('database.default'),
+            'host' => config('database.connections.mysql.host'),
+            'database' => config('database.connections.mysql.database'),
+            'error' => $dbError,
+            'counts' => $counts,
+        ],
+    ], $dbOk ? 200 : 500);
+});
+
 // Trang chủ tự động chuyển đến Dashboard
 Route::get('/', function () {
     return redirect()->route('schedules.index');
